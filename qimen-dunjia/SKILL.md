@@ -21,7 +21,7 @@ description: "奇门遁甲占断——按节气时辰排九宫八卦阵，布三
 | `references/shiwei-pan.md` | 时家奇门排盘完整步骤 | 起课时必读 |
 | `references/core-geju.md` | 《奇门遁甲秘笈大全》核心格局（十干克应、八门克应、九星旺衰、八神、三诈五假、九遁、格局分类） | 需要系统性的格局规则时读取，特别是吉凶格局判断 |
 
-PDF 原书在 `E:/HanakoWorkSpace/卦/` 目录下共 7 本。
+PDF 原书在 `E:/HanakoWorkSpace/skills/卦书/` 目录下共 7 本。
 
 ---
 
@@ -161,7 +161,7 @@ PDF 原书在 `E:/HanakoWorkSpace/卦/` 目录下共 7 本。
 
 ### 日志格式
 
-起局完成后，将以下内容追加到 `E:\HanakoWorkSpace\卦理日志\qimen_log.json`：
+起局完成后，将以下内容追加到 `E:\HanakoWorkSpace\skills\卦理日志\qimen_log.json`：
 
 ```json
 {

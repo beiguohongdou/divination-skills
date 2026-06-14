@@ -19,7 +19,7 @@ description: "大六壬神课占卜——按时间起天地盘、排四课、发
 | `references/duanan-cases.md` | 大六壬断案·实战案例精选（邵彦和 216 条断案分类、邵公断课六步法、典型断案示例、按问事类型速查） | 断课时参考，类似案例可参照邵公断法 |
 | `references/heart-mirror-rules.md` | 《大六壬心镜》核心断法规则（九宗门、九科卦名、四课三传、十二天将、分类占断） | 需要系统性的断法规则时读取，特别是发用规则和课格判断 |
 
-PDF 原书在 `E:/HanakoWorkSpace/卦/` 目录下共 10 本。
+PDF 原书在 `E:/HanakoWorkSpace/skills/卦书/` 目录下共 10 本。
 
 ---
 
@@ -187,7 +187,7 @@ PDF 原书在 `E:/HanakoWorkSpace/卦/` 目录下共 10 本。
 
 ### 日志格式
 
-起课完成后，将以下内容追加到 `E:\HanakoWorkSpace\卦理日志\daliuren_log.json`：
+起课完成后，将以下内容追加到 `E:\HanakoWorkSpace\skills\卦理日志\daliuren_log.json`：
 
 ```json
 {

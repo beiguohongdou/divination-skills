@@ -2,7 +2,7 @@
 
 > 来源：《大六壬断案》邵彦和著。收录 216 条实战断案，分 17 类。本书为壬学之指南，学壬者必读。
 > 「其断验神妙，出语家之上」——每条断案都包含背景、推理路径与实际结果。
-> 完整 PDF 在 `E:/HanakoWorkSpace/卦/大六壬断案-古籍典藏-luckclub.pdf`
+> 完整 PDF 在 `E:/HanakoWorkSpace/skills/卦书/大六壬断案-古籍典藏-luckclub.pdf`
 
 ---
 

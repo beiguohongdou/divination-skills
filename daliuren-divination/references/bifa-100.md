@@ -1,7 +1,7 @@
 # 大六壬 · 毕法赋 100 条断法
 
 > 毕法赋为大六壬断课的纲领性文献，共 100 条法则。每条独立，又相互关联。
-> 来源：《毕法赋》明朝郭载騋著。完整 PDF 在 `E:/HanakoWorkSpace/卦/毕法赋-古籍典藏-luckclub.pdf`
+> 来源：《毕法赋》明朝郭载騋著。完整 PDF 在 `E:/HanakoWorkSpace/skills/卦书/毕法赋-古籍典藏-luckclub.pdf`
 
 ---
 

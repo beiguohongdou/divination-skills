@@ -1,7 +1,7 @@
 # 黄金策 · 总断千金赋核心规则
 
 > 来源：《黄金策》题明·刘基著。本篇为全书纲领，六爻断卦的核心理论基石。
-> 本文件摘录关键规则，白话解释已改写。原文 PDF 在 `E:/HanakoWorkSpace/卦/黄金策-古籍典藏-luckclub.pdf`
+> 本文件摘录关键规则，白话解释已改写。原文 PDF 在 `E:/HanakoWorkSpace/skills/卦书/黄金策-古籍典藏-luckclub.pdf`
 
 ---
 

@@ -2,7 +2,7 @@
 
 > 来源：《增删卜易》野鹤老人著。与《黄金策》互补：黄金策重理论体系，增删卜易重实战验证。
 > 「屡验者存之，不验者删之」——野鹤老人每条规则都经过大量卦例检验。
-> luckclub.cn 在线版含白话译文，本文件提取关键规则。PDF 在 `E:/HanakoWorkSpace/卦/增删卜易-古籍典藏-luckclub.pdf`
+> luckclub.cn 在线版含白话译文，本文件提取关键规则。PDF 在 `E:/HanakoWorkSpace/skills/卦书/增删卜易-古籍典藏-luckclub.pdf`
 
 ---
 
