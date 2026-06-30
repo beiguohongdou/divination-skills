@@ -21,7 +21,31 @@ description: "奇门遁甲占断——按节气时辰排九宫八卦阵，布三
 | `references/shiwei-pan.md` | 时家奇门排盘完整步骤 | 起课时必读 |
 | `references/core-geju.md` | 《奇门遁甲秘笈大全》核心格局（十干克应、八门克应、九星旺衰、八神、三诈五假、九遁、格局分类） | 需要系统性的格局规则时读取，特别是吉凶格局判断 |
 
-PDF 原书在 `E:/HanakoWorkSpace/skills/卦书/` 目录下共 7 本。
+PDF 原书在仓库上级 `skills/卦书/` 目录（与其它 skill 共用）。
+
+---
+
+## ⚠️ Agent 起局强制路由
+
+**给定时刻时必须先跑脚本，禁止心算定局与九宫。**
+
+| 命令 | 说明 |
+|------|------|
+| `py -3 scripts/qimen.py --json YYYY-MM-DD HH:MM` | 全排盘（推荐） |
+| `py -3 scripts/qimen_pan.py ... --json` | 同上，支持 `--datetime` |
+
+### 联占三式（跨 skill 脚本路径）
+
+本 skill 目录下**无**梅花/六爻/六壬脚本；联占时切换至兄弟 skill：
+
+| 体系 | 脚本路径（相对本 skill 根目录） |
+|------|--------------------------------|
+| 梅花时间起卦 | `../yijing-divination/scripts/meihua_time.py YYYY-MM-DD HH:MM --json` |
+| 铜钱/数字起卦 | `../yijing-divination/scripts/tongqian.py --json` 或 `--nums A B C --json` |
+| 六爻装卦 | `../yijing-divination/scripts/liuyao_pan.py --hex 卦名 --moving N --date YYYY-MM-DD --topic 问事 --json` |
+| 大六壬 | `../daliuren-divination/scripts/daliuren.py --json YYYY-MM-DD HH:MM` |
+
+六爻须先起卦再装卦，链路与 `yijing-divination/SKILL.md`「六爻脚本链」一致。
 
 ---
 
@@ -73,12 +97,15 @@ PDF 原书在 `E:/HanakoWorkSpace/skills/卦书/` 目录下共 7 本。
 
 ## 排盘方法
 
-> **Agent 必遵**：给定时刻时**先运行** `scripts/qimen_pan.py` 定局（阴阳遁、局数）。全九宫排盘按 `references/shiwei-pan.md` 在定局基础上继续。
+> **Agent 必遵**：给定时刻时**先运行** `scripts/qimen.py` 或 `scripts/qimen_pan.py`（二者等价，均输出九宫全排盘；禁止心算）。`qimen_pan.py` 为统一 CLI 封装。
 
 ```bash
+py -3 scripts/qimen.py --json 2026-07-04 06:00
 py -3 scripts/qimen_pan.py 2026-07-04 06:00 --json
 py -3 scripts/qimen_pan.py --datetime "2026-07-04 06:00" --json
 ```
+
+脚本输出含：阴阳遁、局数、旬首、值符值使、九宫（地盘、天盘、八门、九星、八神）。**解读前展示脚本 JSON 摘要**。
 
 ### 第一步：定局（阴阳遁十八局）
 
@@ -192,72 +219,23 @@ py -3 scripts/qimen_pan.py --datetime "2026-07-04 06:00" --json
 
 ### 多体系冲突处理
 
-按**问事类型**定主体系：
+按**问事类型**定主体系，再叠辅体系（须各跑对应脚本，路径见上「联占三式」）：
 
-| 问事 | 主体系 | 辅体系 |
-|------|--------|--------|
-| 方位、时机、布局、出行 | **奇门（本 skill）** | 梅花看大势 |
-| 人事因果、应期 | **六壬** | 奇门给行动 |
-| 吉凶总调 | **梅花** | 奇门给方位 |
+| 问事 | 主体系 | 辅体系 | 辅体系脚本 |
+|------|--------|--------|------------|
+| 方位、时机、布局、出行 | **奇门（本 skill）** | 梅花看大势 | `../yijing-divination/scripts/meihua_time.py` |
+| 人事因果、应期 | **六壬** | 奇门给行动 | `../daliuren-divination/scripts/daliuren.py` |
+| 吉凶总调 | **梅花** | 奇门给方位 | 本 skill `qimen.py` |
+| 财/官/婚/病细节 | **六爻** | 奇门给方位 | yijing 起卦 + `liuyao_pan.py` |
 
-须跑 `qimen_pan.py` 及他体系脚本。矛盾时：主体系结论优先，辅体系补充；排盘无误仍不协调则奇门侧侧重「忌避/注意」而非强断大吉。
+矛盾时：主体系结论优先，辅体系补充；排盘无误仍不协调则奇门侧侧重「忌避/注意」而非强断大吉。
 
 ---
 
 ## 断卦验证机制
 
-### 日志路径
+`qimen.py` **每次排盘自动写入** `skills/卦理日志/records/<id>/`（见 yijing SKILL 完整说明）。
 
-日志默认存放于 `E:\HanakoWorkSpace\skills\卦理日志\` 目录下。如果该目录不存在，会自动创建。换电脑使用时，将 `E:\HanakoWorkSpace\skills\` 整个目录复制到新电脑即可，日志路径自动跟随。
+解读后 amend、用户反馈 feedback，命令同 daliuren / yijing SKILL。
 
-每次起局后，将完整记录写入日志文件，用于事后验证和积累经验。
-
-### 日志格式
-
-起局完成后，将以下内容追加到 `E:\HanakoWorkSpace\skills\卦理日志\qimen_log.json`：
-
-```json
-{
-  "id": "20260612_001",
-  "timestamp": "2026-06-12T15:30:00+08:00",
-  "system": "qimen",
-  "question": "用户的具体问题",
-  "method": "奇门起局",
-  "parameters": {
-    "时间": "某年某月某日某时",
-    "节气": "某某",
-    "遁法": "阳/阴遁",
-    "局数": "N局",
-    "九宫格局": "九宫格ASCII图或文字描述",
-    "用神分析": {
-      "日干落宫": "[宫位] [门] [星] [神]",
-      "时干落宫": "[宫位] [门] [星] [神]",
-      "用神落宫": "[宫位]"
-    },
-    "格局克应": ["格局1", "格局2"],
-    "时空建议": {
-      "有利方位": ["方位1", "方位2"],
-      "有利时段": "某时段",
-      "忌避方位": ["方位1", "方位2"]
-    }
-  },
-  "interpretation": "断局摘要（200字以内）",
-  "verdict": "吉/凶/中性/待验",
-  "feedback": null,
-  "accuracy": null
-}
-```
-
-### 反馈闭环
-
-用户事后反馈时（「上次那局准了」「不准，实际情况是...」），将反馈追加到对应记录的 `feedback` 字段，并根据实际结果更新 `accuracy`（1-5分，5为完全准确）。
-
-### 积累分析
-
-定期（每10局或用户要求时）读取日志，分析：
-- 总体准确率
-- 哪类问题断得准、哪类不准
-- 各格局的准确率差异
-- 八门九星八神判断的偏差规律
-
-这些分析结果可以反哺后续的解读权重。
+---

@@ -88,14 +88,16 @@ def get_xunkong(d: date) -> tuple:
     xun = idx // 10  # 0-5
     return XUNKONG_MAP[xun]
 
-def get_yuejian(d: date) -> str:
-    """返回日期 d 的月建地支"""
-    # 按节气近似日查表
-    md_key = (d.month, d.day)
+def get_yuejian_approx(d: date) -> str:
+    """节气近似日查表（fallback）。"""
     for month_start, day_start, branch in reversed(MONTH_BRANCH):
         if (d.month > month_start) or (d.month == month_start and d.day >= day_start):
             return branch
-    return MONTH_BRANCH[-1][2]  # 默认丑月
+    return MONTH_BRANCH[-1][2]
+
+
+def get_yuejian(d: date) -> str:
+    return get_yuejian_approx(d)
 
 def get_tiangan_index(dz: str) -> int:
     """地支在十二支中的索引"""
@@ -125,15 +127,31 @@ def get_tiangan_wuxing(tg: str) -> str:
 # 主程序
 # ============================================================
 
-def compute(d: date) -> dict:
+def compute(d: date, hour: int = 12, minute: int = 0) -> dict:
     """计算日期的所有干支数据"""
     gz = get_day_ganzhi(d)
     tg, dz = gz[0], gz[1]
     xk = get_xunkong(d)
-    yj = get_yuejian(d)
     gz_idx = get_ganzhi_index(d)
 
-    return {
+    yj = get_yuejian_approx(d)
+    yj_note = "按节气近似日期划分（fallback）"
+    yj_precision = "approximate"
+    current_qi = None
+    yuejiang = None
+
+    try:
+        from jieqi import get_yuejian_for_date
+        jq = get_yuejian_for_date(d, hour, minute)
+        yj = jq["月建"]
+        yj_note = jq["月建说明"]
+        yj_precision = jq["月建精度"]
+        current_qi = jq.get("当前节气")
+        yuejiang = jq.get("月将")
+    except Exception:
+        pass
+
+    out = {
         "date": d.isoformat(),
         "日干支": gz,
         "日天干": tg,
@@ -142,10 +160,15 @@ def compute(d: date) -> dict:
         "地支五行": get_dizhi_wuxing(dz),
         "旬空": list(xk),
         "月建": yj,
-        "月建说明": "按节气近似日期划分，非精确交节时刻；交节当日可能有半天偏差，精密占断请查万年历交节时分",
-        "月建精度": "approximate",
-        "干支序数": gz_idx + 1,  # 1-60
+        "月建说明": yj_note,
+        "月建精度": yj_precision,
+        "干支序数": gz_idx + 1,
     }
+    if current_qi:
+        out["当前节气"] = current_qi
+    if yuejiang:
+        out["月将"] = yuejiang
+    return out
 
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--json":

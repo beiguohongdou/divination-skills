@@ -19,20 +19,60 @@ description: "本地易经占卜（梅花易数为主，六爻纳甲进阶）—
 | 用户输入 | 必跑脚本 | 禁止 |
 |----------|----------|------|
 | 给出**具体日期/时间** | `scripts/meihua_time.py` | 心算；公历年份当年数 |
-| 要**六爻/世应/六亲/用神** | 起卦后 + `scripts/liuyao_pan.py` | 不装卦直接断六亲 |
-| 随口报**三个三位数** | 数字法（见下，无脚本） | — |
-| 无时间、无报数 | `scripts/tongqian.py` | — |
+| 要**六爻/世应/六亲/用神** | 见下「六爻脚本链」 | 跳过起卦直接装卦 |
+| **铜钱法** | `scripts/tongqian.py --json` | — |
+| **数字法**（三个数） | `scripts/tongqian.py --nums A B C --json` | 心算互卦/体用 |
+| 随口报三个数（旧说法） | 同上 `--nums` | — |
 
 **Python 命令（Windows 优先 `py -3`，其次 `python`）**：
 
 ```bash
 py -3 scripts/meihua_time.py 2026-07-04 06:00 --json
 py -3 scripts/tongqian.py --json
-py -3 scripts/liuyao_pan.py --hex 地雷复 --moving 6 --date 2026-07-04 --json
+py -3 scripts/tongqian.py --nums 105 372 891 --json
+py -3 scripts/liuyao_pan.py --hex 地雷复 --moving 6 --date 2026-07-04 --topic 赛事 --json
 py -3 scripts/ganzhi.py --json 2026-07-04
+py -3 scripts/jieqi.py --json 2026-07-04 06:00
 ```
 
 > **年数 ≠ 公历年份**：年数取农历年地支（子1…亥12），由脚本按时刻自动计算，随年份变动。
+
+### 六爻脚本链（必按顺序）
+
+1. **起卦**（二选一）  
+   - 有时间：`py -3 scripts/meihua_time.py … --json`  
+   - 无时间：`py -3 scripts/tongqian.py --json` 或 `--nums A B C --json`
+2. **装卦**：从 JSON 取 `本卦.name`（或 `本卦.name` 字段）、`动爻` 列表 →  
+   `py -3 scripts/liuyao_pan.py --hex 卦名 --moving 1,6 --date YYYY-MM-DD --topic 问事 --json`  
+   （`liuyao_pan` 内已调 `ganzhi`/`jieqi` 月建，一般不必再单独跑 `ganzhi.py`）
+3. **细断**：读 `references/bushizhengzong-rules.md`、`fenlei-zhangu.md` 等
+
+> **体用禁止混用**：时间起卦**只**用 `meihua_time.py` 的「体用」；铜钱/数字法**只**用 `tongqian.py` JSON 的「体用」。不得用时间体用规则解铜钱卦。
+
+### 联占三式（跨 skill 脚本路径）
+
+本 skill 目录下**无**六壬/奇门脚本；联占时切换至兄弟 skill 并运行：
+
+| 体系 | 脚本路径（相对本 skill 根目录） |
+|------|--------------------------------|
+| 大六壬 | `../daliuren-divination/scripts/daliuren.py --json YYYY-MM-DD HH:MM` |
+| 奇门 | `../qimen-dunjia/scripts/qimen.py --json YYYY-MM-DD HH:MM` |
+
+或使用各 skill 内 `daliuren_pan.py` / `qimen_pan.py`（支持 `--datetime`）。
+
+### 三端联调抽检（Cursor / Claude / Hanako）
+
+三端通过 junction 挂载**同一** `skills/divination-skills/` 源码。脚本层自动验：
+
+```powershell
+py -3 skills/divination-skills/verify-three-endpoints.py
+```
+
+**标准 UI prompt**（复制到三端各测一遍，确认 Agent 跑脚本且卦象一致）：
+
+> 请用梅花易数时间起卦：公历 2026-07-04 06:00，问「今日运势如何」。要求：必须先运行 `meihua_time.py`（禁止心算）；解读前先给 6 行摘要。
+
+**锚点期望**：本卦地雷复 · 年数 7 · 变卦山雷颐 · 体克用。
 
 ## 参考文件索引
 
@@ -49,7 +89,7 @@ py -3 scripts/ganzhi.py --json 2026-07-04
 | `references/bushizhengzong-rules.md`  | 《卜筮正宗》核心规则（用神分类、世应论、原忌仇神、旺衰判断、旬空、暗动日破、反吟伏吟、进退神、飞伏神、卦身） | 需要系统性的六爻规则时读取，特别是用神取用和吉凶判断 |
 | `references/liuyao-cases.md`          | 六爻实战案例集（求财、疾病、功名、婚姻、出行、失物、官司等案例） | 需要参考实际案例时读取，帮助理解断卦的实际应用 |
 
-此外，工作空间有 **《易经》完整 PDF**（`E:/HanakoWorkSpace/skills/卦书/易经-古籍典藏-luckclub.pdf`，151 页），包含全部 64 卦的卦辞、384 爻辞、彖传、象传、文言传及白话译文。爻辞已整理入 `references/zhouyi-yaoci.md`，彖传和文言传详情可查 PDF。
+此外，工作空间可选 **《易经》完整 PDF**（`skills/卦书/易经-古籍典藏-luckclub.pdf`，151 页），包含全部 64 卦的卦辞、384 爻辞、彖传、象传、文言传及白话译文。爻辞已整理入 `references/zhouyi-yaoci.md`，彖传和文言传详情可查 PDF。
 
 ---
 
@@ -144,7 +184,13 @@ py -3 scripts/meihua_time.py --datetime "2026-07-04 06:00" --json
 py -3 scripts/meihua_time.py --json
 ```
 
-首次使用需安装依赖：`pip install -r scripts/requirements.txt`（或 `pip install zhdate`）。
+首次使用需安装依赖：
+
+```bash
+pip install -r scripts/requirements.txt
+```
+
+含 **zhdate**（农历）、**ephem**（精确节气/月建）。未装 ephem 时 `ganzhi.py` 月建回退为近似日期表（见输出 `月建精度`）。
 
 **唯一算法**（与 `references/meihua-qigua.md` 一致，禁止其它取法）：
 
@@ -192,7 +238,15 @@ py -3 scripts/tongqian.py --json
 - 第二个数 ÷ 8 的余数 → **上卦**
 - 第三个数 ÷ 6 的余数 → 动爻位置（0=上爻/第六爻）
 
-> **提示**：请报三个完整的数字（如 105、372、891）。**不要报 0**。若用户习惯「第一数上卦、第二数下卦」，须先确认或改报数顺序。
+> **提示**：请报三个完整的数字（如 105、372、891）。**不要报 0**。若用户习惯「第一数上卦、第二数下卦」，须先确认或改报数顺序。解读前须说明：**本 skill 第一数=下卦、第二数=上卦**。
+
+### 梅花专项起卦（物数、字占、方所等）
+
+`references/meihua-qigua.md` 有物数、声音、字占、方所等法，**当前无对应脚本**。
+
+- **有具体时刻** → 改走 `meihua_time.py`
+- **可报三个数** → 改走 `tongqian.py --nums`
+- **否则** → 引导用户补充时间或报数；**禁止 Agent 心算**专项起卦
 
 ---
 
@@ -225,6 +279,8 @@ py -3 scripts/tongqian.py --json
 2. **上下经卦均有动爻**：动爻**较多**者为用；动爻数**相同**则**上卦**为用
 3. **六爻皆静**：上卦为体，下卦为用
 
+> **铜钱/数字法**：优先用 `tongqian.py --json` 输出的「体用」字段；若无 JSON 再按上表手推。
+
 体用定好后，生克与吉凶见 `hexagrams.md` 体用生克表 + 卦辞/爻辞。
 
 ---
@@ -238,8 +294,29 @@ py -3 scripts/tongqian.py --json
 | 趋势、吉凶、要不要做 | **梅花** | 起卦脚本 | hexagrams.md、fenlei-zhangu.md |
 | 卦辞爻辞、具体含义 | **梅花** | 起卦脚本 | + zhouyi-yaoci.md |
 | 人物/物品/方位类象 | **梅花** | 起卦脚本 | + meihua-wanwu-leixiang.md |
-| 世应、六亲、用神、应期 | **六爻** | 起卦 + **`liuyao_pan.py`** + `ganzhi.py` | najia-bagong.md、bushizhengzong-rules.md |
-| 赛事对阵（谁胜谁） | **六爻**（世应）或梅花 | 同上 | 世=己方，应=对方；子孙可象进球 |
+| 世应、六亲、用神、应期 | **六爻** | **六爻脚本链**（起卦→`liuyao_pan.py`） | najia-bagong.md、bushizhengzong-rules.md |
+| 赛事对阵（谁胜谁） | **六爻**（世应）或梅花 | 同上 | 见下「赛事六亲」 |
+
+**赛事六亲**（六爻路径，世=己方、应=对方）：
+
+| 六亲 | 赛事含义 |
+|------|----------|
+| 世爻 | 己方（如主队/你支持的一方） |
+| 应爻 | 对方 |
+| 子孙 | 进球、攻势、喜悦 |
+| 妻财 | 收益、观众、盘口 |
+| 官鬼 | 胜负关键、裁判、压力 |
+| 父母 | 场地、赛事组织、规则 |
+
+**六爻断卦七步**（走六爻路径时须按序核对，不可跳步）：
+
+1. **装卦**：`liuyao_pan.py` → 八宫、世应、纳甲、六亲、六神、旬空、旺衰、**月破、入墓、化空/化墓、伏神、进退、卦身**
+2. **定用神**：`--topic` → 用神 + **原神/忌神/仇神**；细则读 `bushizhengzong-rules.md`
+3. **看旺衰**：每爻「旺衰」+「暗动日破」
+4. **看动变**：变卦六亲、进退、反吟伏吟（纳甲地支）
+5. **看空破**：旬空、**月破**、日破/暗动、化空
+6. **断吉凶**：原/忌/仇、世应生克
+7. **定应期**：出空、填实、逢合冲；配合 `ganzhi.py` / `jieqi.py`
 
 **禁止**：走六爻路径却不跑 `liuyao_pan.py`；用体用生克代替妻财/官鬼等专业用神断法。
 
@@ -263,8 +340,11 @@ py -3 scripts/tongqian.py --json
 ```bash
 py -3 scripts/ganzhi.py --json
 py -3 scripts/ganzhi.py --json 2026-07-04
-# 输出含 日干支、旬空、月建（月建为节气近似值，见脚本说明）
+# 输出含 日干支、旬空、月建（优先 ephem 精确节气）、当前节气、月将
+py -3 scripts/jieqi.py --json 2026-07-04 06:00   # 单独查节气/月建
 ```
+
+**月建**：`ganzhi.py` 优先调用 `jieqi.py`（ephem 太阳黄经）；无 ephem 时回退近似日期表。
 
 **应期判断规则**：
 
@@ -358,13 +438,7 @@ py -3 scripts/ganzhi.py --json 2026-07-04
 
 ### 体用生克
 
-体用分析是梅花易数断卦的核心。详见 `references/hexagrams.md` 中的「体用生克详解」。
-
-基本步骤：
-
-1. **定体用**：有动爻的**经卦**为「用卦」，无动爻的经卦为「体卦」；上下均有动爻则动多者为用，同数则上卦为用（详见上文体用定法）
-2. **取五行**：体卦和用卦各取五行（乾兑金、坤艮土、震巽木、坎水、离火）
-3. **判生克**：体生用→耗泄；用生体→受益；体克用→可成需努力；用克体→困难宜谨慎；体用比和→顺利
+体用定法见上文「体用定法」节。解读时取五行（乾兑金、坤艮土、震巽木、坎水、离火），判生克：体生用→耗泄；用生体→受益；体克用→可成需努力；用克体→困难宜谨慎；比和→顺利。详见 `references/hexagrams.md`。
 
 ### 解读框架
 
@@ -388,14 +462,14 @@ py -3 scripts/ganzhi.py --json 2026-07-04
 
 ### 多体系冲突处理
 
-按**问事类型**定主体系，再叠辅体系（须各跑对应脚本：`meihua_time`/`tongqian`、`daliuren_pan.py`、`qimen_pan.py`）：
+按**问事类型**定主体系，再叠辅体系（须各跑对应脚本，路径见文首「联占三式」）：
 
-| 问事 | 主体系 | 辅体系 |
-|------|--------|--------|
-| 吉凶趋势、要不要做 | **梅花**（yijing） | 六壬看过程 |
-| 人事因果、谁在动、应期 | **六壬** | 梅花看总调 |
-| 方位、时机、出行布局 | **奇门** | 梅花看大势 |
-| 财/官/婚/病细节 | **六爻**（yijing + liuyao_pan） | 按需 |
+| 问事 | 主体系 | 辅体系 | 辅体系脚本 |
+|------|--------|--------|------------|
+| 吉凶趋势、要不要做 | **梅花**（本 skill） | 六壬看过程 | `../daliuren-divination/scripts/daliuren.py` |
+| 人事因果、谁在动、应期 | **六壬** | 梅花看总调 | 本 skill 起卦脚本 |
+| 方位、时机、出行布局 | **奇门** | 梅花看大势 | `../qimen-dunjia/scripts/qimen.py` |
+| 财/官/婚/病细节 | **六爻**（本 skill） | 按需 | — |
 
 **呈现顺序**：先报主体系结论 → 辅体系修正过程或行动建议 → 矛盾时说明「主断 / 过程 / 行动」分层，禁止三结果裸堆。
 
@@ -419,56 +493,100 @@ py -3 scripts/ganzhi.py --json 2026-07-04
 
 ## 断卦验证机制
 
-### 日志路径
+**任意 Agent（Cursor / Claude / Hanako 等）只要运行起卦脚本，排盘 JSON 会自动落盘**，不依赖 Agent 是否记得手动写日志。
 
-日志默认存放于 `E:\HanakoWorkSpace\skills\卦理日志\` 目录下。如果该目录不存在，会自动创建。换电脑使用时，将 `E:\HanakoWorkSpace\skills\` 整个目录复制到新电脑即可，日志路径自动跟随。
+### 目录结构（每次占卜一个文件夹，自动创建）
 
-每次起卦后，将完整记录写入日志文件，用于事后验证和积累经验。
-
-### 日志格式
-
-起卦完成后，将以下内容追加到 `E:\HanakoWorkSpace\skills\卦理日志\divination_log.json`：
-
-```json
-{
-  "id": "20260612_001",
-  "timestamp": "2026-06-12T15:30:00+08:00",
-  "question": "用户的具体问题",
-  "method": "铜钱法",
-  "hexagram": {
-    "original": "第X卦·卦名",
-    "changing_lines": [3],
-    "changed": "第Y卦·卦名",
-    "day_ganzhi": "辛卯",
-    "month_branch": "午",
-    "empty_branches": ["午", "未"]
-  },
-  "interpretation": "解卦摘要（200字以内）",
-  "verdict": "吉/凶/中性/待验",
-  "feedback": null,
-  "accuracy": null
-}
+```
+../卦理日志/records/<YYYYMMDD_NNN>/
+  meta.json
+  payload.json
+  README.md           # 人类可读摘要（自动生成）
+  interpretation.json
+  feedback.json
+  liuyao_pan.json
 ```
 
-### 反馈闭环
+- **新用户**无 `卦理日志` 或 `records` 时，**首次起卦自动创建**，无需手工建目录
+- **不上传 git**：`records/` 已在 `.gitignore`
 
-用户事后反馈时（「上次那卦准了」「不准，实际情况是...」），将反馈追加到对应记录的 `feedback` 字段，并根据实际结果更新 `accuracy`（1-5分，5为完全准确）。
+### 自动落盘（脚本内置，默认开启）
 
-### 积累分析
+| 脚本 | 触发 |
+|------|------|
+| `meihua_time.py` | 每次成功起卦 |
+| `tongqian.py` | 铜钱/数字法 |
+| `liuyao_pan.py` | 装卦（可用 `--log-id` 追加到同目录） |
+| `daliuren.py` / `qimen.py` | 每次排盘 |
 
-定期（每10卦或用户要求时）读取日志，分析：
-- 总体准确率
-- 哪类问题断得准、哪类不准
-- 体用生克 vs 纳甲断法的准确率差异
-- 应期判断的偏差规律
+JSON 输出含 `"_session_log": {"id": "...", "dir": "..."}`。**Agent 须读出 id 并告知用户**。
 
-这些分析结果可以反哺后续的解读权重。
+关闭自动日志（仅调试）：环境变量 `DIVINATION_NO_LOG=1`
+
+### Agent 解读后 amend（必做）
+
+排盘脚本只存卦象；**解读完成后**补充问事与倾向：
+
+```bash
+py -3 ../卦理日志/divination_log.py amend --id 20260704_001 \
+  --question "今日运势如何" \
+  --verdict "中性偏吉" \
+  --summary "复其初颐其神"
+```
+
+若 JSON 中有 `_session_log.id`，用 `--id`；否则 `--latest`。
+
+### 用户事后反馈
+
+```bash
+py -3 ../卦理日志/divination_log.py feedback --latest --outcome hit --note "用户原话"
+```
+
+`--outcome`：`hit` · `miss` · `partial` · `unknown`
+
+### 六爻链式日志
+
+1. `meihua_time.py --json` → 得 `_session_log.id`
+2. `liuyao_pan.py --log-id <id> --json …` → 同目录写入 `liuyao_pan.json`
+
+### 人类可读浏览
+
+每次起卦 / amend / feedback 后，自动生成 Markdown 摘要（**直接打开看，不必读 JSON**）：
+
+| 文件 | 用途 |
+|------|------|
+| `records/README.md` | **总索引**（在 `../卦理日志/records/` 下） |
+| `records/<id>/README.md` | **单次占卜摘要** |
+
+补生成旧记录：`py -3 ../卦理日志/divination_log.py render --all`
+
+### 查询（机器 / CLI）
+
+```bash
+py -3 ../卦理日志/divination_log.py list --pending
+py -3 ../卦理日志/divination_log.py show --id 20260704_001
+```
 
 ---
 
 ## 输出格式
 
-以 Markdown 输出：
+### 解读前最小摘要（必展示，6 行）
+
+对用户先输出以下摘要，再展开解读（完整 JSON 不必全文粘贴）：
+
+```
+1. 起卦法：（meihua_time / tongqian 铜钱 / tongqian 数字）
+2. 时间：（公历… → 农历…，若适用）
+3. 卦象：本卦… · 变卦… · 动爻… · 互卦…（若适用）
+4. 体用：（体… / 用… → 生克关系）— 仅梅花路径
+5. 一句话象意：（结合问事）
+6. 倾向：（吉/凶/中性/待验）+ 主要依据一行
+```
+
+六爻路径可在 4 行改为：世应/用神/旺衰要点。
+
+以 Markdown 输出完整结构：
 
 ```
 ## 🔮 起卦信息
@@ -482,7 +600,7 @@ py -3 scripts/ganzhi.py --json 2026-07-04
 
 **变卦**：第 N 卦 · [卦名]（如无动爻则省略）
 - 动爻：第 N 爻（如有多爻则列出）
-- 互卦：[卦名]（可选，取二三四爻和三四五爻）
+- 互卦：第 N 卦 · [卦名]（`meihua_time.py` / `tongqian.py --json` 均含「互卦」）
 
 （可绘制 ASCII 卦象图：阳爻 ████████████  阴爻 ████    ████  动爻标记 ●/○）
 

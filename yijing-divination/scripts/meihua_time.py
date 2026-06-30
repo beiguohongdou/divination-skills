@@ -28,6 +28,7 @@ import argparse
 import json
 import sys
 from datetime import datetime
+from pathlib import Path
 
 if sys.platform == "win32":
     try:
@@ -197,6 +198,21 @@ def hexagram_info(upper: dict, lower: dict) -> dict:
     return {"sequence": seq, "name": title, "binary": binary}
 
 
+def hugua_from_binary(binary: str) -> dict:
+    """互卦：下互=二三四爻，上互=三四五爻（初爻 index 0）。"""
+    bit3_map = {"111": 1, "110": 2, "101": 3, "100": 4, "011": 5, "010": 6, "001": 7, "000": 0}
+    lower_hu = trigram_from_mod(bit3_map[binary[1:4]])
+    upper_hu = trigram_from_mod(bit3_map[binary[2:5]])
+    info = hexagram_info(upper_hu, lower_hu)
+    return {
+        "sequence": info["sequence"],
+        "name": info["name"],
+        "binary": info["binary"],
+        "下互": lower_hu["name"],
+        "上互": upper_hu["name"],
+    }
+
+
 def flip_line(bits: str, line_index: int) -> str:
     """line_index 0=初爻 … 5=上爻"""
     chars = list(bits)
@@ -274,6 +290,7 @@ def compute(dt: datetime) -> dict:
     changed_bits = flip_line(ben["binary"], moving - 1)
     upper_b, lower_b = bits_to_trigrams(changed_bits)
     bian = hexagram_info(upper_b, lower_b)
+    hu = hugua_from_binary(ben["binary"])
 
     leap_note = "（闰月）" if getattr(lunar, "leap_month", False) else ""
 
@@ -302,6 +319,7 @@ def compute(dt: datetime) -> dict:
         "动爻名": YAO_NAMES[moving - 1],
         "本卦": ben,
         "变卦": bian,
+        "互卦": hu,
         "体用": ti_yong(moving, upper, lower),
         "卦象": render_lines(ben["binary"], moving),
     }
@@ -313,6 +331,8 @@ def main() -> None:
     parser.add_argument("time_pos", nargs="?", help="可选时间部分")
     parser.add_argument("--datetime", "-d", help="完整日期时间字符串")
     parser.add_argument("--json", action="store_true", help="JSON 输出")
+    parser.add_argument("--question", "-q", default="", help="问事（写入日志 meta）")
+    parser.add_argument("--log-id", help="追加到已有日志目录（如 liuyao 链式调用）")
     args = parser.parse_args()
 
     if args.datetime:
@@ -328,6 +348,23 @@ def main() -> None:
     except RuntimeError as e:
         print(str(e), file=sys.stderr)
         sys.exit(1)
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    try:
+        from _log_hook import attach_session_log, inject_log_into_result  # noqa: E402
+
+        log_info = attach_session_log(
+            system="yijing",
+            method="meihua_time",
+            payload=result,
+            datetime_str=result["输入"]["公历"],
+            question=args.question,
+            script="meihua_time.py",
+            log_id=args.log_id,
+        )
+        result = inject_log_into_result(result, log_info)
+    except Exception:
+        pass
 
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -346,13 +383,17 @@ def main() -> None:
         print(f"计算: {calc['年+月+日']} → 上卦余{calc['上卦余数']}；+时={calc['年+月+日+时']} → 下卦余{calc['下卦余数']}，动爻余{calc['动爻余数']}")
         print()
         ben, bian = result["本卦"], result["变卦"]
+        hu = result["互卦"]
         print(f"本卦: {ben['name']}（{ben['binary']}）")
         print(f"变卦: {bian['name']}（{bian['binary']}）")
+        print(f"互卦: {hu['name']}（下互{hu['下互']} 上互{hu['上互']}）")
         print(f"动爻: {result['动爻名']}")
         ty = result["体用"]
         print(f"体用: 体{ty['体卦']}({ty['体五行']}) 用{ty['用卦']}({ty['用五行']}) → {ty['生克']}")
         print()
         print(result["卦象"])
+        if result.get("_session_log"):
+            print(f"\n[日志] id={result['_session_log']['id']}  dir={result['_session_log']['dir']}")
 
 
 if __name__ == "__main__":

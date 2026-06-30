@@ -44,11 +44,25 @@ cd divination-skills/yijing-divination/scripts && pip install -r requirements.tx
 
 ## 易经起卦要点（2026-06 更新）
 
-- 用户给**具体时间** → `yijing-divination/scripts/meihua_time.py`
-- 要**六爻装卦** → `liuyao_pan.py`
-- **大六壬** → `daliuren-divination/scripts/daliuren_pan.py`
-- **奇门定局** → `qimen-dunjia/scripts/qimen_pan.py`
+- 用户给**具体时间** → `meihua_time.py`（含互卦）
+- **铜钱/数字法** → `tongqian.py --json` / `--nums`（含互卦、体用）
+- **六爻装卦** → `liuyao_pan.py`（旺衰、伏神、进退、`--topic` 用神）
+- **节气月建** → `jieqi.py` + `ganzhi.py`（ephem 精确交节）
+- **大六壬全课** → `daliuren-divination/scripts/daliuren.py`（或 `daliuren_pan.py`）
+- **奇门全排盘** → `qimen-dunjia/scripts/qimen.py`（或 `qimen_pan.py`）
+- **卦理日志** → `卦理日志/`（起卦自动落盘 + `README.md` 可读摘要；`records/` 个人数据不进 git）
 - Windows 优先 **`py -3`**；年数随农历年自动变
+- 三端联调：`py -3 verify-three-endpoints.py`
+
+## 卦理日志
+
+| 路径 | 说明 |
+|------|------|
+| `卦理日志/session_log.py` | 核心库，起卦脚本自动调用 |
+| `卦理日志/divination_log.py` | amend / feedback / render CLI |
+| `卦理日志/records/` | 本机占卜记录（gitignore，含可读 `README.md`） |
+
+克隆后首次起卦会自动创建 `records/`；个人记录不会上传 GitHub。
 
 ## 数据来源
 

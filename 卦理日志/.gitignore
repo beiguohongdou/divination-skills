@@ -1,0 +1,5 @@
+# 个人卦理记录，不提交仓库
+records/
+records.json
+records.json.migrated.bak
+*.bak

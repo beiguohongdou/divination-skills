@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+**/scripts/_tmp*.json
+**/scripts/_t.json
+yijing-divination/易学大师诊断报告.md

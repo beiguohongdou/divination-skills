@@ -16,6 +16,13 @@ import os
 import json
 from datetime import date, datetime
 
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 # 确保能找到 ganzhi.py
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 _PARENT_DIR = os.path.dirname(_THIS_DIR)
@@ -396,6 +403,33 @@ def format_output(result: dict) -> str:
 # ──────────────────────────────────────────────
 
 def main():
+    import json
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+    def _emit(result: dict, *, as_json: bool) -> None:
+        try:
+            from _log_hook import attach_session_log, inject_log_into_result  # noqa: E402
+
+            log_info = attach_session_log(
+                system="qimen",
+                method="qimen",
+                payload=result,
+                datetime_str=result.get("时间", ""),
+                script="qimen.py",
+            )
+            result = inject_log_into_result(result, log_info)
+        except Exception:
+            pass
+        if as_json:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            print(format_output(result))
+            if result.get("_session_log"):
+                lg = result["_session_log"]
+                print(f"\n[日志] id={lg['id']}  dir={lg['dir']}")
+
     if "--json" in sys.argv:
         json_idx = sys.argv.index("--json")
         args = sys.argv[json_idx + 1:]
@@ -405,15 +439,15 @@ def main():
             dt = datetime.strptime(f"{args[0]} 12:00", "%Y-%m-%d %H:%M")
         else:
             dt = datetime.now()
-        print(json.dumps(build_qimen(dt), ensure_ascii=False, indent=2))
+        _emit(build_qimen(dt), as_json=True)
     elif len(sys.argv) >= 3:
         dt = datetime.strptime(f"{sys.argv[1]} {sys.argv[2]}", "%Y-%m-%d %H:%M")
-        print(format_output(build_qimen(dt)))
+        _emit(build_qimen(dt), as_json=False)
     elif len(sys.argv) == 2:
         dt = datetime.strptime(f"{sys.argv[1]} 12:00", "%Y-%m-%d %H:%M")
-        print(format_output(build_qimen(dt)))
+        _emit(build_qimen(dt), as_json=False)
     else:
-        print(format_output(build_qimen(datetime.now())))
+        _emit(build_qimen(datetime.now()), as_json=False)
 
 if __name__ == "__main__":
     main()

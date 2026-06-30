@@ -19,7 +19,31 @@ description: "大六壬神课占卜——按时间起天地盘、排四课、发
 | `references/duanan-cases.md` | 大六壬断案·实战案例精选（邵彦和 216 条断案分类、邵公断课六步法、典型断案示例、按问事类型速查） | 断课时参考，类似案例可参照邵公断法 |
 | `references/heart-mirror-rules.md` | 《大六壬心镜》核心断法规则（九宗门、九科卦名、四课三传、十二天将、分类占断） | 需要系统性的断法规则时读取，特别是发用规则和课格判断 |
 
-PDF 原书在 `E:/HanakoWorkSpace/skills/卦书/` 目录下共 10 本。
+PDF 原书在仓库上级 `skills/卦书/` 目录（与其它 skill 共用）。
+
+---
+
+## ⚠️ Agent 起课强制路由
+
+**给定时刻时必须先跑脚本，禁止心算天地盘/四课/三传。**
+
+| 命令 | 说明 |
+|------|------|
+| `py -3 scripts/daliuren.py --json YYYY-MM-DD HH:MM` | 全排盘（推荐） |
+| `py -3 scripts/daliuren_pan.py ... --json` | 同上，支持 `--datetime` |
+
+### 联占三式（跨 skill 脚本路径）
+
+本 skill 目录下**无**梅花/六爻/奇门脚本；联占时切换至兄弟 skill：
+
+| 体系 | 脚本路径（相对本 skill 根目录） |
+|------|--------------------------------|
+| 梅花时间起卦 | `../yijing-divination/scripts/meihua_time.py YYYY-MM-DD HH:MM --json` |
+| 铜钱/数字起卦 | `../yijing-divination/scripts/tongqian.py --json` 或 `--nums A B C --json` |
+| 六爻装卦 | `../yijing-divination/scripts/liuyao_pan.py --hex 卦名 --moving N --date YYYY-MM-DD --topic 问事 --json` |
+| 奇门 | `../qimen-dunjia/scripts/qimen.py --json YYYY-MM-DD HH:MM` |
+
+六爻须先起卦再装卦，链路与 `yijing-divination/SKILL.md`「六爻脚本链」一致。
 
 ---
 
@@ -71,12 +95,15 @@ PDF 原书在 `E:/HanakoWorkSpace/skills/卦书/` 目录下共 10 本。
 
 大六壬起课的核心步骤：**占时 → 月将 → 天地盘 → 四课 → 三传**
 
-> **Agent 必遵**：给定时刻时**先运行** `scripts/daliuren_pan.py`（禁止心算天地盘）。四课、三传、九宗门在脚本结果基础上按 `references/sike-sanchuan.md` 续排。
+> **Agent 必遵**：给定时刻时**先运行** `scripts/daliuren.py` 或 `scripts/daliuren_pan.py`（二者等价，均输出全课；禁止心算）。`daliuren_pan.py` 为统一 CLI 封装。
 
 ```bash
+py -3 scripts/daliuren.py --json 2026-07-04 06:00
 py -3 scripts/daliuren_pan.py 2026-07-04 06:00 --json
 py -3 scripts/daliuren_pan.py --datetime "2026-07-04 06:00" --json
 ```
+
+脚本输出含：日干支、月将、占时、天地盘、十二天将、四课、三传（九宗门）、贵人顺逆。**解读前展示脚本 JSON 摘要**。
 
 ### 第一步：定占时
 
@@ -188,68 +215,24 @@ py -3 scripts/daliuren_pan.py --datetime "2026-07-04 06:00" --json
 
 ### 多体系冲突处理
 
-按**问事类型**定主体系（与 yijing-divination 一致）：
+按**问事类型**定主体系，再叠辅体系（须各跑对应脚本，路径见上「联占三式」）：
 
-| 问事 | 主体系 | 辅体系 |
-|------|--------|--------|
-| 人事因果、谁在动、课体应期 | **六壬（本 skill）** | 梅花看总调 |
-| 吉凶趋势 | **梅花** | 六壬看过程 |
-| 方位、时机 | **奇门** | 六壬看人事 |
+| 问事 | 主体系 | 辅体系 | 辅体系脚本 |
+|------|--------|--------|------------|
+| 人事因果、谁在动、课体应期 | **六壬（本 skill）** | 梅花看总调 | `../yijing-divination/scripts/meihua_time.py` |
+| 吉凶趋势 | **梅花** | 六壬看过程 | 本 skill `daliuren.py` |
+| 方位、时机 | **奇门** | 六壬看人事 | `../qimen-dunjia/scripts/qimen.py` |
+| 财/官/婚/病细节 | **六爻** | 六壬看过程 | yijing 起卦 + `liuyao_pan.py` |
 
-须各跑对应脚本：`daliuren_pan.py`、`meihua_time.py`/`tongqian.py`、`qimen_pan.py`。矛盾时分层呈现，禁止裸堆三结果。
+矛盾时分层呈现（主断 / 过程 / 行动），禁止裸堆三结果。
 
 ---
 
 ## 断卦验证机制
 
-### 日志路径
+`daliuren.py` **每次排盘自动写入** `skills/卦理日志/records/<id>/`（见 yijing SKILL 完整说明）。
 
-日志默认存放于 `E:\HanakoWorkSpace\skills\卦理日志\` 目录下。如果该目录不存在，会自动创建。换电脑使用时，将 `E:\HanakoWorkSpace\skills\` 整个目录复制到新电脑即可，日志路径自动跟随。
+解读后：`py -3 ../卦理日志/divination_log.py amend --latest --question "..." --verdict "..." --summary "..."`  
+用户反馈：`py -3 ../卦理日志/divination_log.py feedback --latest --outcome hit --note "..."`
 
-每次起课后，将完整记录写入日志文件，用于事后验证和积累经验。
-
-### 日志格式
-
-起课完成后，将以下内容追加到 `E:\HanakoWorkSpace\skills\卦理日志\daliuren_log.json`：
-
-```json
-{
-  "id": "20260612_001",
-  "timestamp": "2026-06-12T15:30:00+08:00",
-  "system": "daliuren",
-  "question": "用户的具体问题",
-  "method": "大六壬起课",
-  "parameters": {
-    "占时": "某月某日某时",
-    "月将": "某将（地支）",
-    "日干支": "某某",
-    "天地盘": "天盘排列",
-    "四课": ["第一课", "第二课", "第三课", "第四课"],
-    "三传": {
-      "初传": "某（事始）",
-      "中传": "某（事中）",
-      "末传": "某（事终）"
-    },
-    "宗门": "用哪一宗门取三传",
-    "天将分布": "十二天将各落何宫"
-  },
-  "interpretation": "断课摘要（200字以内）",
-  "verdict": "吉/凶/中性/待验",
-  "feedback": null,
-  "accuracy": null
-}
-```
-
-### 反馈闭环
-
-用户事后反馈时（「上次那课准了」「不准，实际情况是...」），将反馈追加到对应记录的 `feedback` 字段，并根据实际结果更新 `accuracy`（1-5分，5为完全准确）。
-
-### 积累分析
-
-定期（每10课或用户要求时）读取日志，分析：
-- 总体准确率
-- 哪类问题断得准、哪类不准
-- 九宗门各类型的准确率差异
-- 天将判断的偏差规律
-
-这些分析结果可以反哺后续的解读权重。
+---
