@@ -142,6 +142,8 @@ def compute(d: date) -> dict:
         "地支五行": get_dizhi_wuxing(dz),
         "旬空": list(xk),
         "月建": yj,
+        "月建说明": "按节气近似日期划分，非精确交节时刻；交节当日可能有半天偏差，精密占断请查万年历交节时分",
+        "月建精度": "approximate",
         "干支序数": gz_idx + 1,  # 1-60
     }
 

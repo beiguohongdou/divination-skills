@@ -44,9 +44,11 @@ cd divination-skills/yijing-divination/scripts && pip install -r requirements.tx
 
 ## 易经起卦要点（2026-06 更新）
 
-- 用户给**具体时间** → 必须跑 `yijing-divination/scripts/meihua_time.py`
-- **年数** = 农历年地支 1～12，随年份自动变，禁止背固定表
-- 详细规则见 `yijing-divination/SKILL.md`
+- 用户给**具体时间** → `yijing-divination/scripts/meihua_time.py`
+- 要**六爻装卦** → `liuyao_pan.py`
+- **大六壬** → `daliuren-divination/scripts/daliuren_pan.py`
+- **奇门定局** → `qimen-dunjia/scripts/qimen_pan.py`
+- Windows 优先 **`py -3`**；年数随农历年自动变
 
 ## 数据来源
 

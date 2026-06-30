@@ -52,7 +52,8 @@ pip install -r requirements.txt   # 安装 zhdate（年月日时起卦必需）
 |------|------|------|
 | `meihua_time.py` | **zhdate** | 年月日时起卦（有时间必用） |
 | `tongqian.py` | 无 | 铜钱法 |
-| `ganzhi.py` | 无 | 应期判断 / 日干支 |
+| `liuyao_pan.py` | 无 | 六爻纳甲装卦（世应六亲六神） |
+| `ganzhi.py` | 无 | 应期 / 日干支（月建为节气近似） |
 
 Windows 若 `python` 不可用，可试 `py -3 scripts/meihua_time.py ...`。
 
