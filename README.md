@@ -12,16 +12,6 @@
 | `daliuren-divination` | 大六壬神课 | 7 个（毕法赋、邵公断案、天地盘等） |
 | `qimen-dunjia` | 奇门遁甲 | 7 个（十干克应、八门九星、格局克应等） |
 
-## HanakoWorkSpace 唯一源
-
-| 线 | 本地目录 | 说明 |
-|----|----------|------|
-| 源 | `skills/divination-skills/` | **只在这里改** |
-| Cursor | `.agents/skills/yijing-divination/` 等 | junction → 源 |
-| Claude | `~/.claude/skills/yijing-divination/` 等 | junction → 源（本机已配） |
-
-与 `AI伴侣` / `ai-chat` **完全分离**，占卜改动勿提交到 ai-chat 仓库。
-
 ## 安装（其它机器）
 
 ```bash
