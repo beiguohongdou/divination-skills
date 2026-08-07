@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import random
 import sys
 from pathlib import Path
@@ -31,17 +32,19 @@ from hexagram_core import (  # noqa: E402
 )
 
 
-def cast_one_line() -> int:
-    coins = [random.randint(0, 1) for _ in range(3)]
+def cast_one_line(rng: random.Random) -> int:
+    coins = [rng.randint(0, 1) for _ in range(3)]
     s = sum(coins)
     return {0: 6, 1: 7, 2: 8, 3: 9}[s]
 
 
-def full_cast(verbose: bool = False) -> list[dict]:
+def full_cast(verbose: bool = False, rng: random.Random | None = None) -> list[dict]:
+    if rng is None:
+        rng = random.Random()
     lines = []
     labels = {6: "老阴", 7: "少阳", 8: "少阴", 9: "老阳"}
     for i in range(6):
-        value = cast_one_line()
+        value = cast_one_line(rng)
         is_moving = value in (6, 9)
         yin = value in (6, 8)
         if i == 0:
@@ -86,16 +89,45 @@ def main() -> None:
     p.add_argument("--nums", nargs=3, type=int, metavar="N", help="数字法三数")
     p.add_argument("--question", "-q", default="", help="问事（写入日志）")
     p.add_argument("--log-id", help="追加到已有日志目录")
+    p.add_argument(
+        "--seed",
+        type=int,
+        help="【仅测试】固定随机种子以复现卦象；正式占问禁止使用。"
+        "须同时设置环境变量 DIVINATION_ALLOW_SEED=1 才生效",
+    )
     args = p.parse_args()
+
+    # 闸门：--seed 仅测试用，须显式开闸；正式占问永不误入
+    use_seed = False
+    if args.seed is not None:
+        if os.environ.get("DIVINATION_ALLOW_SEED", "").strip() != "1":
+            print(
+                "错误：--seed 仅供测试/核对。正式铜钱起卦禁止使用。"
+                "若确为测试，请设置环境变量 DIVINATION_ALLOW_SEED=1 后再传 --seed。",
+                file=sys.stderr,
+            )
+            sys.exit(2)
+        use_seed = True
+        print(
+            f"[测试模式] 使用 --seed={args.seed}，结果可复现，不计入正式占断。",
+            file=sys.stderr,
+        )
+        # 测试复现不污染正式卦理日志
+        os.environ["DIVINATION_NO_LOG"] = "1"
+
+    rng = random.Random(args.seed) if use_seed else random.Random()
 
     if args.nums:
         pan = digital_cast(tuple(args.nums))
         ty = ti_yong_from_moving(pan["动爻"], pan["binary"])
         result = {"起卦方式": "数字法", **pan, "体用": ty}
     else:
-        cast = full_cast(verbose=args.verbose)
+        cast = full_cast(verbose=args.verbose, rng=rng)
         values = [c["value"] for c in cast]
         result = build_result_from_values(values, "铜钱法")
+        if use_seed:
+            result["测试复现"] = True
+            result["seed"] = args.seed
         if not args.json and not args.verbose:
             for v in values:
                 print(v)

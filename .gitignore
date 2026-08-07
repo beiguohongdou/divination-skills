@@ -3,3 +3,7 @@ __pycache__/
 **/scripts/_tmp*.json
 **/scripts/_t.json
 yijing-divination/易学大师诊断报告.md
+
+# 测试/锚点日志不计入正式卦理日志（可通过 DIVINATION_NO_LOG=1 关闭写入）
+records/*_test/
+records/*_anchor/

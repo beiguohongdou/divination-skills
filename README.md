@@ -66,7 +66,9 @@ cd divination-skills/yijing-divination/scripts && pip install -r requirements.tx
 
 ## 数据来源
 
-古籍原文来自 [luckclub.cn](https://www.luckclub.cn)，PDF 仅供文化学习研究。
+古籍原文来自 [luckclub.cn](https://www.luckclub.cn)，仅供文化学习研究。  
+本仓库上级 `skills/卦书/OCR识别转MD/` 为清洗后的 Markdown 深查源；`skills/卦书/*.pdf` 为备份。  
+Agent 运行层仍以各 skill 的 `references/` + `scripts/` 为准。
 
 ## License
 

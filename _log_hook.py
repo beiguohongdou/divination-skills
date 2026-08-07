@@ -47,6 +47,7 @@ def attach_session_log(
             datetime_str=datetime_str,
             question=question,
             script=script or method,
+            is_test=os.environ.get("DIVINATION_NO_LOG", "").strip() == "1",
         )
     except Exception:
         return None

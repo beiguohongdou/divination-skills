@@ -127,10 +127,15 @@ def create_session(
     datetime_str: str = "",
     question: str = "",
     script: str = "",
+    is_test: bool = False,
 ) -> dict[str, Any]:
-    """起卦脚本成功输出后调用；自动建目录写 payload。"""
+    """起卦脚本成功输出后调用；自动建目录写 payload。
+    is_test=True 时记录标记为测试/锚点，不计入正式统计。
+    """
     ensure_records_dir()
     sid = next_id()
+    if is_test:
+        sid = f"{sid}_test"
     sdir = session_dir(sid)
     sdir.mkdir(parents=True, exist_ok=True)
 
@@ -143,6 +148,7 @@ def create_session(
         "script": script,
         "datetime": datetime_str,
         "question": question,
+        "is_test": is_test,
         "interpretation": {"verdict": "", "summary": ""},
         "feedback": None,
         "status": STATUS_PENDING_INTERP if not question else STATUS_PENDING_FEEDBACK,

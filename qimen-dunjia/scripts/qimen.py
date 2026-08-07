@@ -67,6 +67,7 @@ LIUYI_XUNSHOU = {"戊": "甲子", "己": "甲戌", "庚": "甲申", "辛": "甲�
 # 时节气表: (月,日,节气名,阳遁局数(上中下),阴遁局数(上中下))
 # 阳遁: 冬至→芒种; 阴遁: 夏至→大雪
 # 格式: (月,日,节气名,上元局,中元局,下元局, 阳0/阴1)
+# 注：固定日期表仅作回退；实际使用优先取 jieqi.py 的 ephem 精确交节
 JIEQI = [
     ( 1,  6, "小寒",  2, 8, 5, 0),   # 阳遁
     ( 1, 21, "大寒",  3, 9, 6, 0),
@@ -94,6 +95,9 @@ JIEQI = [
     (12, 22, "冬至",  1, 7, 4, 0),   # 阳遁
 ]
 
+# 节气局数映射（节气名 → (上元,中元,下元,阴阳遁)）
+JIEQI_JU = {name: (ju1, ju2, ju3, yinyang) for _, _, name, ju1, ju2, ju3, yinyang in JIEQI}
+
 # 时辰地支
 SHI_ZHI = ["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"]
 
@@ -102,7 +106,20 @@ SHI_ZHI = ["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","�
 # ──────────────────────────────────────────────
 
 def get_jieqi(d: date):
-    """根据日期返回节气信息 (节气名, 阴阳遁, 上中下三元局数)"""
+    """
+    根据日期返回节气信息 (节气名, 阴阳遁, 上中下三元局数)。
+    优先使用 jieqi.py 的 ephem 精确交节；无 ephem 时回退到固定日期表。
+    """
+    try:
+        from jieqi import get_yuejian_for_date
+        info = get_yuejian_for_date(d)
+        name = info.get("当前节气")
+        if name in JIEQI_JU:
+            ju1, ju2, ju3, yinyang = JIEQI_JU[name]
+            return name, "阴遁" if yinyang else "阳遁", (ju1, ju2, ju3)
+    except Exception:
+        pass
+    # 回退：固定日期表
     for m, day, name, ju1, ju2, ju3, yinyang in reversed(JIEQI):
         if d.month > m or (d.month == m and d.day >= day):
             return name, "阴遁" if yinyang else "阳遁", (ju1, ju2, ju3)
@@ -111,15 +128,21 @@ def get_jieqi(d: date):
 def get_sanyuan(gz_index: int):
     """
     确定三元(上/中/下)。
-    基于日干支所在旬的旬首地支:
-    子午卯酉 → 上元, 寅申巳亥 → 中元, 辰戌丑未 → 下元
+    基于五日一元的甲己符头规则：
+    符头地支 子午卯酉 → 上元, 寅申巳亥 → 中元, 辰戌丑未 → 下元。
     """
-    xun = gz_index // 10  # 旬号 0-5
-    xunshou_idx = xun * 10  # 旬首在60干支表的索引
-    xunshou_dz = GANZHI_60[xunshou_idx][1]  # 取地支
-    if xunshou_dz in "子午卯酉":
+    # 找到最近的甲/己日（符头）
+    for i in range(gz_index, -1, -1):
+        gz = GANZHI_60[i]
+        if gz[0] in ("甲", "己"):
+            futou_dz = gz[1]
+            break
+    else:
+        futou_dz = GANZHI_60[0][1]  # fallback
+
+    if futou_dz in "子午卯酉":
         return 0  # 上元
-    elif xunshou_dz in "寅申巳亥":
+    elif futou_dz in "寅申巳亥":
         return 1  # 中元
     else:
         return 2  # 下元
@@ -151,7 +174,7 @@ def find_gong_with_gan(pan: dict, gan: str) -> int:
     for gong in range(1, 10):
         if pan.get(gong) == gan:
             return gong
-    return 5  # 默认中宫
+    return None  # 找不到返回 None，由调用方处理
 
 def build_qimen(dt: datetime) -> dict:
     """排一局完整的奇门盘"""
@@ -218,6 +241,8 @@ def build_qimen(dt: datetime) -> dict:
 
     # 旬首六仪在地盘的宫位
     xunshou_gong = find_gong_with_gan(dipan, xunshou_liuyi)
+    if xunshou_gong is None:
+        xunshou_gong = 5  # 理论上不会发生，防御
 
     # 值符星 = 旬首宫对应的原始九星
     zhifu_xing = JIUXING[xunshou_gong - 1] if xunshou_gong != 5 else "天禽"
@@ -229,84 +254,81 @@ def build_qimen(dt: datetime) -> dict:
     # ── 天盘 ──
     # 值符星加于时干宫。时干在地盘的宫位。
     shigan_gong = find_gong_with_gan(dipan, shigan)
+    if shigan_gong is None:
+        # 时干为甲（旬首）时，取旬首所遁之仪的宫位
+        shigan_gong = xunshou_gong
 
-    # 各星按顺序排布
-    xing_order = []
-    start_idx = JIUXING.index(zhifu_xing)
-    if yinyang == "阳遁":
-        xing_order = JIUXING[start_idx:] + JIUXING[:start_idx]
-    else:
-        xing_order = [JIUXING[start_idx]] + JIUXING[start_idx - 1::-1] + JIUXING[:start_idx:-1]
-        # 逆排更准确的方法: 值符在第一位,后面递减
-        order_list = []
-        for i in range(9):
-            idx = (start_idx - i) % 9
-            order_list.append(JIUXING[idx])
-        xing_order = order_list
+    # 九星洛书环序：蓬→任→冲→辅→英→芮（禽寄）→柱→心
+    JIUXING_RING = ["天蓬", "天任", "天冲", "天辅", "天英", "天芮", "天柱", "天心"]
+    # 天禽寄天芮，不独立参与环转
 
+    # 值符星在环中的位置
+    zhifu_ring_idx = JIUXING_RING.index(zhifu_xing) if zhifu_xing in JIUXING_RING else 4  # 天禽寄天芮
+
+    # 天盘星：从值符落宫起，沿宫环顺转（转盘法，阴阳遁均顺转）
     tianpan_xing = {}
-    if yinyang == "阳遁":
-        for i in range(9):
-            gong = ((shigan_gong - 1) + i) % 9 + 1
-            tianpan_xing[gong] = xing_order[i]
-    else:
-        for i in range(9):
-            gong = ((shigan_gong - 1) - i) % 9 + 1
-            tianpan_xing[gong] = xing_order[i]
+    GONG_RING = [1, 8, 3, 4, 9, 2, 7, 6]
+    if shigan_gong not in GONG_RING:
+        shigan_gong = GONG_RING[0]
+    start_gong_pos = GONG_RING.index(shigan_gong)
+    for i in range(8):
+        gong = GONG_RING[(start_gong_pos + i) % 8]
+        star = JIUXING_RING[(zhifu_ring_idx + i) % 8]
+        tianpan_xing[gong] = star
+    # 中5宫：天禽寄坤2
+    tianpan_xing[5] = "天禽"
 
     # ── 天盘天干 ──
-    # 地盘天干随值符星飞转
-    # 值符星原宫(旬首宫)的地盘天干 = xunshou_liuyi
-    # 这个天干飞到 shigan_gong
+    # 地盘天干随值符星沿宫环顺转
     tianpan_gan = {}
-    yingong_index = 0 if yinyang == "阳遁" else 2  # 阳顺阴逆, 阴遁逆排用2是因为阴遁地排逆
-    # 简化: 用飞转法
-    for gong in range(1, 10):
-        if yinyang == "阳遁":
-            offset = (gong - shigan_gong) % 9
-        else:
-            offset = -(gong - shigan_gong) % 9
-        src_gong = (xunshou_gong - 1 + offset) % 9 + 1
-        tianpan_gan[gong] = dipan.get(src_gong, QILI_YUAN[(src_gong - 1) % 9])
+    GONG_RING = [1, 8, 3, 4, 9, 2, 7, 6]
+    if shigan_gong not in GONG_RING:
+        shigan_gong = GONG_RING[0]
+    start_gong_pos = GONG_RING.index(shigan_gong)
+    # 值符星原宫（旬首宫）的地盘天干飞到 shigan_gong
+    if xunshou_gong not in GONG_RING:
+        xunshou_gong = GONG_RING[0]
+    xunshou_ring_pos = GONG_RING.index(xunshou_gong)
+    for i in range(8):
+        gong = GONG_RING[(start_gong_pos + i) % 8]
+        src_gong = GONG_RING[(xunshou_ring_pos + i) % 8]
+        tianpan_gan[gong] = dipan.get(src_gong, "")
+    # 中5宫天干寄坤2
+    tianpan_gan[5] = dipan.get(2, "")
 
     # ── 八门 ──
-    # 值使门加于时支宫
-    shizhi_gong = shichen_idx + 1  # 子=1,丑=2,...亥=12→亥在哪个宫?
-    # 地支→宫位: 子=1坎,丑=8艮,寅=8艮,卯=3震,辰=4巽,巳=4巽,午=9离,未=2坤,申=2坤,酉=7兑,戌=6乾,亥=6乾
-    DIZHI_TO_GONG = {
-        "子": 1, "丑": 8, "寅": 8, "卯": 3, "辰": 4, "巳": 4,
-        "午": 9, "未": 2, "申": 2, "酉": 7, "戌": 6, "亥": 6,
-    }
-    zhishi_target_gong = DIZHI_TO_GONG[shichen]
-
-    men_list = []
-    zhishi_idx = BAMEN.index(zhishi_men)
-    # 八门顺序（跳过中5宫）
-    bamen_all = [m for m in BAMEN if m]
+    # 值使门加于时支宫（转盘法：从旬首宫起数时辰）
+    # 先求时支在旬中的序号
+    shi_xun_dz_idx = shi_gz_idx % 10  # 旬内序号 0-9
+    # 值使从旬首宫起，按时辰顺/逆数
     if yinyang == "阳遁":
-        for i in range(8):
-            men_list.append(bamen_all[(zhishi_idx + i) % 8])
+        zhishi_target_gong = ((xunshou_gong - 1 + shi_xun_dz_idx) % 9) + 1
     else:
-        for i in range(8):
-            men_list.append(bamen_all[(zhishi_idx - i) % 8])
+        zhishi_target_gong = ((xunshou_gong - 1 - shi_xun_dz_idx) % 9) + 1
 
+    # 八门洛书环序：休生伤杜景死惊开
+    BAMEN_RING = ["休", "生", "伤", "杜", "景", "死", "惊", "开"]
+    # 八门原宫环序：坎1→艮8→震3→巽4→离9→坤2→兑7→乾6
+    GONG_RING = [1, 8, 3, 4, 9, 2, 7, 6]
+
+    # 值使门在环中的位置
+    zhishi_men_idx = BAMEN_RING.index(zhishi_men)
+
+    # 阳遁顺转、阴遁逆转
+    men_list = []
+    for i in range(8):
+        if yinyang == "阳遁":
+            men_list.append(BAMEN_RING[(zhishi_men_idx + i) % 8])
+        else:
+            men_list.append(BAMEN_RING[(zhishi_men_idx - i) % 8])
+
+    # 值使落 zhishi_target_gong，其余沿环序排
     bamen_pan = {}
-    gong_order = [1,8,3,4,9,2,7,6]  # 宫位排布顺序(阳顺)
-    if yinyang == "阴遁":
-        gong_order = [1,6,7,2,9,4,3,8]  # 阴逆
-
-    # Actually, let me use a simpler approach
-    # 值使在zhishi_target_gong, 阳顺阴逆排八门
-    yg_order = [1,8,3,4,9,2,7,6]  # 阳遁宫序
-    yin_gong_order = [1,6,7,2,9,4,3,8]  # 阴遁宫序
-    ordered_gongs = yg_order if yinyang == "阳遁" else yin_gong_order
-
-    if zhishi_target_gong not in ordered_gongs:
-        zhishi_target_gong = ordered_gongs[0]
-
-    start_pos = ordered_gongs.index(zhishi_target_gong)
+    if zhishi_target_gong not in GONG_RING:
+        zhishi_target_gong = GONG_RING[0]
+    start_pos = GONG_RING.index(zhishi_target_gong)
     for i, men in enumerate(men_list):
-        gong = ordered_gongs[(start_pos + i) % 8]
+        gong = GONG_RING[(start_pos + i) % 8]
         bamen_pan[gong] = men
 
     # ── 八神 ──

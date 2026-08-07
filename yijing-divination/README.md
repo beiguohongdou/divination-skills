@@ -51,9 +51,10 @@ pip install -r requirements.txt   # 安装 zhdate（年月日时起卦必需）
 | 脚本 | 依赖 | 用途 |
 |------|------|------|
 | `meihua_time.py` | **zhdate** | 年月日时起卦（有时间必用） |
-| `tongqian.py` | 无 | 铜钱法 |
+| `tongqian.py` | 无 | 铜钱法 / 数字法 |
 | `liuyao_pan.py` | 无 | 六爻纳甲装卦（世应六亲六神） |
-| `ganzhi.py` | 无 | 应期 / 日干支（月建为节气近似） |
+| `ganzhi.py` | 无 | 应期 / 日干支 |
+| `jieqi.py` | ephem（可选） | 精确节气 / 月建 |
 
 Windows 若 `python` 不可用，可试 `py -3 scripts/meihua_time.py ...`。
 
@@ -93,7 +94,8 @@ python meihua_time.py --datetime "2026-07-04 06:00" --json
 
 ## 数据来源
 
-本技能的数据来自以下古籍典藏（luckclub.cn 整理，仅用于文化学习研究）：
+本技能的数据来自以下古籍典藏（luckclub.cn 整理，仅用于文化学习研究）。  
+**深查优先读清洗 Markdown**：`skills/卦书/OCR识别转MD/`；PDF 仅作备份。
 
 - 《易经》（通行本王弼本）
 - 《梅花易数》（邵雍）
@@ -101,6 +103,7 @@ python meihua_time.py --datetime "2026-07-04 06:00" --json
 - 《筮学指要》
 - 《卜筮正宗》（王洪绪）
 - 《增删卜易》（野鹤老人）
+- 《黄金策》
 - 《断易天机》
 - 《卜筮全书》
 
@@ -115,15 +118,22 @@ yijing-divination/
 ├── scripts/
 │   ├── meihua_time.py                 # 年月日时起卦（有时间必用）
 │   ├── tongqian.py                    # 铜钱法
-│   ├── ganzhi.py                      # 干支 / 旬空 / 月建
-│   └── requirements.txt               # zhdate
+│   ├── liuyao_pan.py                  # 六爻纳甲装卦
+│   ├── ganzhi.py                      # 干支 / 旬空
+│   ├── jieqi.py                       # 节气 / 月建（ephem）
+│   ├── hexagram_core.py               # 卦象核心库
+│   └── requirements.txt               # zhdate / ephem
 └── references/
     ├── hexagrams.md                   # 六十四卦速查表 + 体用生克详解
     ├── zhouyi-yaoci.md                # 384 爻辞速查
     ├── meihua-wanwu-leixiang.md       # 八卦万物属类（梅花易数）
     ├── meihua-qigua.md                # 梅花易数起卦法
     ├── najia-bagong.md                # 纳甲八宫基础（世应/六亲/六神）
-    └── fenlei-zhangu.md               # 分类占断指南（11 类常见占问）
+    ├── fenlei-zhangu.md               # 分类占断指南
+    ├── bushizhengzong-rules.md        # 《卜筮正宗》核心规则
+    ├── liuyao-cases.md                # 六爻实战案例
+    ├── huangjince-core.md             # 《黄金策》核心断语
+    └── zengshan-key-rules.md          # 《增删卜易》关键规则
 ```
 
 ---

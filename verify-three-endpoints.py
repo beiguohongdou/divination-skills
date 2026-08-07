@@ -17,6 +17,11 @@ EXPECTED = {
     "nian": 7,
     "bian": "山雷颐",
     "shengke": "体克用",
+    "liuyao_upper4": "丑",   # 纳甲外卦锚点：地雷复四爻
+    "daliuren_zeike": "辰",  # 贼克锚点：2026-07-01 10:00 丙子日 初传（上神）
+    "daliuren_gui": "巳",    # 贵人锚点：2026-07-27 壬日 昼贵
+    "qimen_sanyuan": "中元", # 三元锚点：2026-02-24 己巳日（符头甲子，实际按甲己日索引取中元）
+    "qimen_jieqi": "大雪",   # 节气锚点：2026-12-22 中午（ephem）
 }
 
 ENDPOINTS = [
@@ -81,7 +86,7 @@ def main() -> int:
         f"体用={EXPECTED['shengke']}",
     )
 
-    # 跨 skill 路径
+    # 跨 skill 路径与锚点
     yijing_scripts = ENDPOINTS[0][1] / "scripts"
     div_root = yijing_scripts.parent.parent
     daliuren = div_root / "daliuren-divination" / "scripts" / "daliuren.py"
@@ -103,9 +108,96 @@ def main() -> int:
             print(f"{label}: FAIL {e}")
             all_ok = False
 
+    # 高危锚点验证（本次修复的关键项）
+    print("\n=== 高危锚点验证 ===")
+    anchor_ok = True
+
+    # 1. 六爻纳甲外卦
+    try:
+        out = subprocess.check_output(
+            [sys.executable, str(yijing_scripts / "liuyao_pan.py"), "--hex", "地雷复", "--date", ANCHOR_DATE, "--json"],
+            text=True, encoding="utf-8",
+        )
+        d = json.loads(out[out.find("{"):])
+        upper4 = d["六爻"][3]["地支"]
+        ok = upper4 == EXPECTED["liuyao_upper4"]
+        print(f"六爻外卦: {'PASS' if ok else 'FAIL'} 地雷复四爻={upper4} (期望 {EXPECTED['liuyao_upper4']})")
+        if not ok:
+            anchor_ok = False
+    except Exception as e:
+        print(f"六爻外卦: FAIL {e}")
+        anchor_ok = False
+
+    # 2. 六壬贼克取上神
+    try:
+        out = subprocess.check_output(
+            [sys.executable, str(daliuren), "--json", "2026-07-01", "10:00"],
+            text=True, encoding="utf-8",
+        )
+        d = json.loads(out[out.find("{"):])
+        chuchuan = d["三传"]["初传"]
+        ok = chuchuan == EXPECTED["daliuren_zeike"]
+        print(f"六壬贼克: {'PASS' if ok else 'FAIL'} 初传={chuchuan} (期望 {EXPECTED['daliuren_zeike']})")
+        if not ok:
+            anchor_ok = False
+    except Exception as e:
+        print(f"六壬贼克: FAIL {e}")
+        anchor_ok = False
+
+    # 3. 六壬壬癸贵人
+    try:
+        out = subprocess.check_output(
+            [sys.executable, str(daliuren), "--json", "2026-07-27", "10:00"],
+            text=True, encoding="utf-8",
+        )
+        d = json.loads(out[out.find("{"):])
+        gui = d["贵人"]["贵神"]
+        ok = gui == EXPECTED["daliuren_gui"]
+        print(f"六壬贵人: {'PASS' if ok else 'FAIL'} 壬日昼贵={gui} (期望 {EXPECTED['daliuren_gui']})")
+        if not ok:
+            anchor_ok = False
+    except Exception as e:
+        print(f"六壬贵人: FAIL {e}")
+        anchor_ok = False
+
+    # 4. 奇门三元符头
+    try:
+        out = subprocess.check_output(
+            [sys.executable, str(qimen), "--json", "2026-02-24", "12:00"],
+            text=True, encoding="utf-8",
+        )
+        d = json.loads(out[out.find("{"):])
+        sanyuan = d["三元"]
+        ok = sanyuan == EXPECTED["qimen_sanyuan"]
+        print(f"奇门三元: {'PASS' if ok else 'FAIL'} 己巳日三元={sanyuan} (期望 {EXPECTED['qimen_sanyuan']})")
+        if not ok:
+            anchor_ok = False
+    except Exception as e:
+        print(f"奇门三元: FAIL {e}")
+        anchor_ok = False
+
+    # 5. 奇门节气 ephem
+    try:
+        out = subprocess.check_output(
+            [sys.executable, str(qimen), "--json", "2026-12-22", "12:00"],
+            text=True, encoding="utf-8",
+        )
+        d = json.loads(out[out.find("{"):])
+        jieqi = d["节气"]
+        ok = jieqi == EXPECTED["qimen_jieqi"]
+        print(f"奇门节气: {'PASS' if ok else 'FAIL'} 2026-12-22 节气={jieqi} (期望 {EXPECTED['qimen_jieqi']})")
+        if not ok:
+            anchor_ok = False
+    except Exception as e:
+        print(f"奇门节气: FAIL {e}")
+        anchor_ok = False
+
+    if not anchor_ok:
+        all_ok = False
+
     print()
     if all_ok:
-        print("总体: PASS（脚本层三端一致）")
+        print("总体: PASS（脚本层三端一致，高危锚点全部通过）")
         print("UI 层请在三端各粘贴上方标准 prompt，人工确认 Agent 是否跑脚本且卦象一致。")
         return 0
     print("总体: FAIL")

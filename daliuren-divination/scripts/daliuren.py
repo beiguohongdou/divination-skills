@@ -32,6 +32,7 @@ from ganzhi import (
     TIANGAN, DIZHI, GANZHI_60, WUXING_DZ, WUXING_TG,
     get_day_ganzhi, get_ganzhi_index, get_yuejian,
     compute as ganzhi_compute,
+    is_chong,
 )
 
 # ──────────────────────────────────────────────
@@ -80,7 +81,7 @@ GUI_REN_TABLE = {
     "甲": ("丑", "未"), "戊": ("丑", "未"), "庚": ("丑", "未"),
     "乙": ("子", "申"), "己": ("子", "申"),
     "丙": ("亥", "酉"), "丁": ("亥", "酉"),
-    "壬": ("卯", "巳"), "癸": ("卯", "巳"),
+    "壬": ("巳", "卯"), "癸": ("巳", "卯"),
     "辛": ("午", "寅"),
 }
 
@@ -155,14 +156,15 @@ def ke_check(ke_dict, tiandipan):
     检查一课是否有克。
     xia_wx克shang_wx → 下克上(贼)
     shang_wx克xia_wx → 上克下(克)
-    返回: None(无克), ('下克上',下地支), ('上克下',上地支)
+    返回: None(无克), ('下克上',上神地支), ('上克下',上神地支)
+    注意：无论贼克，初传俱取上神（《六壬大全》）。
     """
     xia = ke_dict["下"]
     shang = ke_dict["上"]
     xia_wx = DZ_WX[xia]
     shang_wx = DZ_WX[shang]
     if WUXING_KE.get(xia_wx) == shang_wx:
-        return ("下克上", xia)  # 贼
+        return ("下克上", shang)  # 贼，仍取上神
     if WUXING_KE.get(shang_wx) == xia_wx:
         return ("上克下", shang)  # 克
     return None
@@ -172,6 +174,31 @@ def get_sanchuan_jiuzongmen(sike, rigan, rizhi, tiandipan):
     九宗门起三传。
     返回: {"初传": ..., "中传": ..., "末传": ..., "宗门": "..."}
     """
+    # ── 0. 特殊课检测 ──
+    # 伏吟：天盘=地盘
+    is_fuyin = all(tiandipan[dz] == dz for dz in DIZHI)
+    # 反吟：天盘与地盘全冲
+    is_fanyin = all(is_chong(tiandipan[dz], dz) for dz in DIZHI)
+    # 八专：干支同位（如甲寅、丁未、己未、癸丑等）
+    is_bazhuan = GANGONG[rigan] == rizhi
+    # 别责：四课不全（三课）
+    sike_shang = [sike[n]["上"] for n in ["一课", "二课", "三课", "四课"]]
+    is_bieze = len(set(sike_shang)) < 4
+
+    if is_fuyin or is_fanyin or is_bazhuan or is_bieze:
+        special = []
+        if is_fuyin: special.append("伏吟")
+        if is_fanyin: special.append("反吟")
+        if is_bazhuan: special.append("八专")
+        if is_bieze: special.append("别责")
+        return {
+            "初传": None,
+            "中传": None,
+            "末传": None,
+            "宗门": f"{'/'.join(special)}（未实现，请人工排盘）",
+            "说明": "触发特殊课，需按专法起课，本脚本暂不自动排三传",
+        }
+
     ke_names = ["一课", "二课", "三课", "四课"]
     ke_data = []
     for name in ke_names:
@@ -197,6 +224,31 @@ def get_sanchuan_jiuzongmen(sike, rigan, rizhi, tiandipan):
     chuchuan = None
     zongmen = ""
 
+    # ── 0. 特殊课检测 ──
+    # 伏吟：天盘=地盘
+    is_fuyin = all(tiandipan[dz] == dz for dz in DIZHI)
+    # 反吟：天盘与地盘全冲
+    is_fanyin = all(is_chong(tiandipan[dz], dz) for dz in DIZHI)
+    # 八专：干支同位（如甲寅、丁未、己未、癸丑等）
+    is_bazhuan = GANGONG[rigan] == rizhi
+    # 别责：四课不全（三课）
+    sike_shang = [sike[n]["上"] for n in ["一课", "二课", "三课", "四课"]]
+    is_bieze = len(set(sike_shang)) < 4
+
+    if is_fuyin or is_fanyin or is_bazhuan or is_bieze:
+        special = []
+        if is_fuyin: special.append("伏吟")
+        if is_fanyin: special.append("反吟")
+        if is_bazhuan: special.append("八专")
+        if is_bieze: special.append("别责")
+        return {
+            "初传": None,
+            "中传": None,
+            "末传": None,
+            "宗门": f"{'/'.join(special)}（未实现，请人工排盘）",
+            "说明": "触发特殊课，需按专法起课，本脚本暂不自动排三传",
+        }
+
     # ── 1. 有克 ──
     all_ke = zei + ke
     if all_ke:
@@ -220,7 +272,7 @@ def get_sanchuan_jiuzongmen(sike, rigan, rizhi, tiandipan):
             # 比用也选不出 → 涉害
             candidates = zei if zei else ke
             chuchuan = _shehai(candidates, sike, tiandipan)
-            zongmen = "涉害法"
+            zongmen = "涉害法（简化：取首见，未涉深浅）"
     else:
         # ── 2. 无克 → 遥克 ──
         chuchuan = _yaoke(rigan, rizhi, ke_data)
@@ -258,35 +310,32 @@ def _shehai(candidates, sike, tiandipan):
     return candidates[0]
 
 def _yaoke(rigan, rizhi, ke_data):
-    """遥克法：日干遥克上神，或上神遥克日干"""
+    """遥克法：先取上神遥克日干（蒿矢），无则取日干遥克上神（弹射）"""
     rigan_wx = TG_WX[rigan]
-    rizhi_wx = DZ_WX[rizhi]
 
-    # 日干遥克上神
-    for kd in ke_data:
-        shangshen = kd["shangshen"]
-        shangshen_wx = DZ_WX[shangshen]
-        if WUXING_KE.get(rigan_wx) == shangshen_wx:
-            return shangshen
-
-    # 上神遥克日干
+    # 上神遥克日干（蒿矢）
     for kd in ke_data:
         shangshen = kd["shangshen"]
         shangshen_wx = DZ_WX[shangshen]
         if WUXING_KE.get(shangshen_wx) == rigan_wx:
             return shangshen
 
+    # 日干遥克上神（弹射）
+    for kd in ke_data:
+        shangshen = kd["shangshen"]
+        shangshen_wx = DZ_WX[shangshen]
+        if WUXING_KE.get(rigan_wx) == shangshen_wx:
+            return shangshen
+
     return None
 
 def _maoxing(rigan, sike, tiandipan):
-    """昴星法：阳日取酉上神为初传，阴日取酉下神为初传"""
+    """昴星法：阳日取酉上神为初传，阴日取酉下神为初传；中末传按专法。"""
     is_yang = rigan in YANG_GAN
-    # 酉上神
     you_shang = tiandipan["酉"]
     if is_yang:
         chuchuan = you_shang
     else:
-        # 阴日：酉下神 = 谁的天盘是酉
         you_xia = None
         for dz in DIZHI:
             if tiandipan[dz] == "酉":
@@ -294,8 +343,13 @@ def _maoxing(rigan, sike, tiandipan):
                 break
         chuchuan = you_xia if you_xia else you_shang
 
-    zhongchuan = tiandipan[chuchuan]
-    mochuan = tiandipan[zhongchuan]
+    # 中末传专法：阳日取日支上神为中传、日干上神为末传；阴日反之
+    if is_yang:
+        zhongchuan = sike["三课"]["上"]
+        mochuan = sike["一课"]["上"]
+    else:
+        zhongchuan = sike["一课"]["上"]
+        mochuan = sike["三课"]["上"]
 
     return {
         "初传": chuchuan,
@@ -308,12 +362,11 @@ def _maoxing(rigan, sike, tiandipan):
 # 十二天将
 # ──────────────────────────────────────────────
 
-def get_gui_ren_distribution(rigan: str, shichen_idx: int):
+def get_gui_ren_distribution(rigan: str, shichen_idx: int, tiandipan: dict):
     """
     十二天将分布。
-    先找贵人（昼/夜），再顺或逆排十二将。
-    贵人临地盘某宫后，阳贵顺排、阴贵逆排。
-    规则：甲戊庚日昼贵在丑、夜贵在未。贵人在亥至辰(0-3,10-11)则顺，在巳至戌(4-9)则逆。
+    先按日干昼夜定贵支，再找贵支在天盘所临地盘宫，
+    贵人临地盘亥子丑寅卯辰(0-3,10-11)则顺布，临巳午未申酉戌(4-9)则逆布。
     """
     # 判断昼/夜：卯至申(5-15时)为昼，酉至寅(17-3时)为夜
     hour = (shichen_idx * 2) % 24  # 近似
@@ -321,9 +374,19 @@ def get_gui_ren_distribution(rigan: str, shichen_idx: int):
 
     day_gui, night_gui = GUI_REN_TABLE.get(rigan, ("子","子"))
     guiren_dz = day_gui if is_day else night_gui
-    guiren_idx = DIZHI.index(guiren_dz)
 
-    # 判断顺逆：贵人在亥子丑寅卯辰(10,11,0,1,2,3)则顺，在巳午未申酉戌(4-9)则逆
+    # 找贵支在天盘所临地盘宫
+    guiren_lin_gong = None
+    for gong in DIZHI:
+        if tiandipan[gong] == guiren_dz:
+            guiren_lin_gong = gong
+            break
+    if guiren_lin_gong is None:
+        guiren_lin_gong = guiren_dz  # 伏吟盘天盘=地盘
+
+    guiren_idx = DIZHI.index(guiren_lin_gong)
+
+    # 判断顺逆：贵人临地盘亥子丑寅卯辰(10,11,0,1,2,3)则顺，临巳午未申酉戌(4-9)则逆
     shun = guiren_idx in (0, 1, 2, 3, 10, 11)
 
     tianjiang_pan = {}
@@ -338,6 +401,7 @@ def get_gui_ren_distribution(rigan: str, shichen_idx: int):
     return {
         "昼夜": "昼" if is_day else "夜",
         "贵神": guiren_dz,
+        "贵人临宫": guiren_lin_gong,
         "顺逆": "顺" if shun else "逆",
         "天将分布": tianjiang_pan,
     }
@@ -373,7 +437,7 @@ def compute(dt: datetime) -> dict:
     sanchuan = get_sanchuan_jiuzongmen(sike, rigan, rizhi, tiandipan)
 
     # 十二天将
-    guiren = get_gui_ren_distribution(rigan, shichen_idx)
+    guiren = get_gui_ren_distribution(rigan, shichen_idx, tiandipan)
 
     # 组装天地盘展示
     tiandi_display = {}

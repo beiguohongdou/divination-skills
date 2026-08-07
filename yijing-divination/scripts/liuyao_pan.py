@@ -58,6 +58,16 @@ NA_YIN = {
     "离": ["卯", "丑", "亥"], "巽": ["丑", "亥", "酉"],
 }
 
+# 外卦纳甲（上卦三爻）
+NA_YANG_OUTER = {
+    "乾": ["午", "申", "戌"], "震": ["午", "申", "戌"],
+    "坎": ["申", "戌", "子"], "艮": ["戌", "子", "寅"],
+}
+NA_YIN_OUTER = {
+    "坤": ["丑", "亥", "酉"], "兑": ["亥", "酉", "未"],
+    "离": ["酉", "未", "巳"], "巽": ["未", "巳", "卯"],
+}
+
 HEXAGRAMS: dict[tuple[str, str], tuple[int, str]] = {
     ("乾", "乾"): (1, "乾为天"), ("坤", "坤"): (2, "坤为地"),
     ("坎", "震"): (3, "水雷屯"), ("艮", "坎"): (4, "山水蒙"),
@@ -127,7 +137,7 @@ def liuqin(palace_wx: str, branch_wx: str) -> str:
 
 def najia_branches(lower: str, upper: str) -> list[str]:
     low = NA_YANG if lower in NA_YANG else NA_YIN
-    up = NA_YANG if upper in NA_YANG else NA_YIN
+    up = NA_YANG_OUTER if upper in NA_YANG_OUTER else NA_YIN_OUTER
     return low[lower] + up[upper]
 
 
@@ -342,14 +352,17 @@ def yongshen_analysis(
     yuan, ji, chou = None, None, None
     if primary_lq and primary_lq not in ("世爻", "应爻"):
         ywx = liuqin_to_wuxing(palace_wx, primary_lq)
+        # 原神：生用神者
         yuan_wx = REV_SHENG.get(ywx, "?")
-        ji_wx = KE_WX.get(ywx, "?")
+        # 忌神：克用神者（反查 KE_WX）
+        ji_wx = next((k for k, v in KE_WX.items() if v == ywx), "?")
         yuan_lq = liuqin(palace_wx, yuan_wx) if yuan_wx != "?" else "?"
         ji_lq = liuqin(palace_wx, ji_wx) if ji_wx != "?" else "?"
         yuan = {"六亲": yuan_lq, "爻位": [ln["爻位"] for ln in lines if ln["六亲"] == yuan_lq]}
         ji = {"六亲": ji_lq, "爻位": [ln["爻位"] for ln in lines if ln["六亲"] == ji_lq]}
         if yuan_lq != "?":
-            cw = KE_WX.get(yuan_wx, "?")
+            # 仇神：克原神者（反查）
+            cw = next((k for k, v in KE_WX.items() if v == yuan_wx), "?")
             clq = liuqin(palace_wx, cw) if cw != "?" else "?"
             chou = {"六亲": clq, "爻位": [ln["爻位"] for ln in lines if ln["六亲"] == clq], "说明": "克原神者为仇"}
         elif ji_lq != "?":
@@ -408,7 +421,8 @@ def build_pan(hex_name: str, moving: list[int], d: date, topic: str | None = Non
                 "爻位": pos,
                 "地支": dz,
                 "五行": c_wx,
-                "六亲": liuqin(c_pwx, c_wx),
+                # 变卦六亲随本卦宫五行装（《卜筮正宗》）
+                "六亲": liuqin(pwx, c_wx),
                 "动": pos in moving,
                 "进退": jin_tui_shen(old_dz, dz) if pos in moving else None,
                 "化空": dz in xunkong if pos in moving else False,
@@ -452,12 +466,13 @@ def build_pan(hex_name: str, moving: list[int], d: date, topic: str | None = Non
             "动": is_mov,
             "旬空": in_xk,
             "月破": is_chong(dz, yue_jian),
-            "入墓": in_mu(wx, dz),
+            "入墓": in_mu(wx, dz),  # 爻入日墓/月墓/动墓：此处理解为「爻五行入该爻地支之墓」
             "日冲": is_chong(dz, day_dz),
             "暗动日破": adrp,
             "进退": jt,
             "化空": bool(is_mov and cdz and cdz in xunkong),
-            "化墓": bool(is_mov and cdz and in_mu(WX_DZ[cdz], cdz)),
+            # 化墓：动爻五行入变爻地支之墓
+            "化墓": bool(is_mov and cdz and WUXING_MU.get(wx) == cdz),
         })
 
     shi_yang = bits[shi - 1] == "1"
