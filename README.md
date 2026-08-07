@@ -1,65 +1,94 @@
 # 三式占卜 Skills
 
-梅花易数/六爻、大六壬、奇门遁甲 三套 AI Agent 占卜技能。
+面向 AI Agent（Cursor / Claude Code 等）的三套传统术数排盘与辅助解读技能：
 
-**远程仓库**：<https://github.com/beiguohongdou/divination-skills>（分支 `master`）
+| 目录 | 体系 | 说明 |
+|------|------|------|
+| [`yijing-divination`](./yijing-divination/) | 梅花易数 + 六爻 | 时间起卦、铜钱/数字法、六爻装卦 |
+| [`daliuren-divination`](./daliuren-divination/) | 大六壬 | 天地盘、四课三传、天将神煞 |
+| [`qimen-dunjia`](./qimen-dunjia/) | 奇门遁甲 | 定局排盘、三奇六仪、八门九星 |
 
-## 包含
+各技能的触发条件、工作流与规则索引见对应目录下的 `SKILL.md`。排盘逻辑以各目录的 `scripts/` 为准；条文与断法摘录在 `references/`。
 
-| Skill | 体系 | 参考文件 |
-|-------|------|---------|
-| `yijing-divination` | 梅花易数 + 六爻 | 9+（卦辞爻辞、纳甲八宫、万物类象、meihua_time 等） |
-| `daliuren-divination` | 大六壬神课 | 7 个（毕法赋、邵公断案、天地盘等） |
-| `qimen-dunjia` | 奇门遁甲 | 7 个（十干克应、八门九星、格局克应等） |
+---
 
-## 安装（其它机器）
+## 快速开始
+
+### 1. 克隆
 
 ```bash
 git clone https://github.com/beiguohongdou/divination-skills.git
-cd divination-skills/yijing-divination/scripts && pip install -r requirements.txt
+cd divination-skills
 ```
 
-将三个 skill 目录放到 Agent 的 skills 路径，或建 junction 指向本仓库。
+### 2. 安装 Python 依赖
 
-## 三端同步核对清单
+建议 Python 3.10+。当前仓库中依赖声明位于易经脚本目录（节气/农历等为共用能力）：
 
-改完 skill 后按此检查，确保 Cursor / Claude / Hanako 算法一致：
+```bash
+pip install -r yijing-divination/scripts/requirements.txt
+```
 
-- [ ] 改动在 `skills/divination-skills/` 内完成（非 ai-chat 根仓库）
-- [ ] `git push origin master` 已推到 GitHub
-- [ ] `.agents/skills/yijing-divination` 为 junction，目标为 `skills/divination-skills/yijing-divination`
-- [ ] `~/.claude/skills/yijing-divination` 同上（或其它机器 pull 后重建 junction）
-- [ ] 验算：`python scripts/meihua_time.py 2026-07-04 06:00` → 本卦 **地雷复**，年数 **7**（丙午，非公历2026）
-- [ ] 三端各问同一时间，卦名与取数过程一致
+Windows 也可使用：
 
-## 易经起卦要点（2026-06 更新）
+```bash
+py -3 -m pip install -r yijing-divination/scripts/requirements.txt
+```
 
-- 用户给**具体时间** → `meihua_time.py`（含互卦）
-- **铜钱/数字法** → `tongqian.py --json` / `--nums`（含互卦、体用）
-- **六爻装卦** → `liuyao_pan.py`（旺衰、伏神、进退、`--topic` 用神）
-- **节气月建** → `jieqi.py` + `ganzhi.py`（ephem 精确交节）
-- **大六壬全课** → `daliuren-divination/scripts/daliuren.py`（或 `daliuren_pan.py`）
-- **奇门全排盘** → `qimen-dunjia/scripts/qimen.py`（或 `qimen_pan.py`）
-- **卦理日志** → `卦理日志/`（起卦自动落盘 + `README.md` 可读摘要；`records/` 个人数据不进 git）
-- Windows 优先 **`py -3`**；年数随农历年自动变
-- 三端联调：`py -3 verify-three-endpoints.py`
+### 3. 接入 Agent
 
-## 卦理日志
+将三个 skill 目录放到所用 Agent 的 skills 搜索路径（名称保持不变），例如：
 
-| 路径 | 说明 |
+- Cursor：项目或用户级 skills 目录  
+- Claude Code：`~/.claude/skills/`  
+
+也可使用目录联接（junction / symlink）指向本仓库中的对应子目录，避免复制多份。
+
+### 4. 命令行自检（可选）
+
+在已安装依赖的环境下，可直接调用脚本做排盘验算，例如：
+
+```bash
+# 梅花：指定时间起卦（示例）
+py -3 yijing-divination/scripts/meihua_time.py 2026-07-04 06:00
+
+# 六爻装卦、大六壬、奇门等见各目录 scripts/ 与 SKILL.md
+```
+
+仓库根目录另有 `verify-three-endpoints.py`，用于一次性抽检多条固定锚点（维护与回归用）。
+
+---
+
+## 目录说明
+
+| 路径 | 用途 |
 |------|------|
-| `卦理日志/session_log.py` | 核心库，起卦脚本自动调用 |
-| `卦理日志/divination_log.py` | amend / feedback / render CLI |
-| `卦理日志/records/` | 本机占卜记录（gitignore，含可读 `README.md`） |
+| `*/SKILL.md` | Agent 技能说明（必读入口） |
+| `*/scripts/` | 起卦 / 起课 / 排盘可执行脚本 |
+| `*/references/` | 整理后的规则与断法摘录 |
+| `卦理日志/` | 起卦会话落盘与摘要工具；本地 `records/` 默认不进入版本库 |
 
-克隆后首次起卦会自动创建 `records/`；个人记录不会上传 GitHub。
+`卦理日志/records/` 仅保存在本机，用于个人占问记录；克隆仓库后首次起卦时可能自动创建，**不会**随 git 上传。
 
-## 数据来源
+---
 
-古籍原文来自 [luckclub.cn](https://www.luckclub.cn)，仅供文化学习研究。  
-本仓库上级 `skills/卦书/OCR识别转MD/` 为清洗后的 Markdown 深查源；`skills/卦书/*.pdf` 为备份。  
-Agent 运行层仍以各 skill 的 `references/` + `scripts/` 为准。
+## 能力边界（请先阅读）
+
+- 本仓库提供的是 **排盘与规则辅助**，不是完整代替人工的「权威断事系统」。  
+- 部分特殊课体或流派细则在实现上有意简化或需人工核对（例如大六壬涉害深度、部分课体三传专法、奇门置闰细调等）。以各 `SKILL.md` 与脚本输出中的标注为准。  
+- 古籍流派众多，本仓库在文档中择一口径实现；若与你所宗派别不同，请以你的师承/原书为准，并自行调整 `references/` 与脚本。  
+- 输出仅供传统文化学习与研究，**不构成**医疗、法律、投资或人生决策建议。
+
+---
+
+## 数据与引用
+
+- Agent 运行时应以本仓库内的 **`references/` + `scripts/`** 为准。  
+- `references/` 为便于检索而整理的摘录与结构化说明，可能与纸质原书排版、个别用字不完全一致；遇关键争议请核对原书。  
+- 内容用于文化学习研究；请勿将本仓库表述为任何第三方网站或出版方的官方镜像。
+
+---
 
 ## License
 
-MIT
+[MIT](./LICENSE)
