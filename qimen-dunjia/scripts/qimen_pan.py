@@ -44,6 +44,9 @@ def main() -> None:
     p.add_argument("time_pos", nargs="?")
     p.add_argument("-d", "--datetime")
     p.add_argument("--json", action="store_true")
+    p.add_argument("--lon", type=float, default=None)
+    p.add_argument("--confirm-dst", action="store_true")
+    p.add_argument("--day-boundary", default="same-day", choices=("same-day", "next-day"))
     args = p.parse_args()
 
     if args.datetime:
@@ -54,7 +57,9 @@ def main() -> None:
     else:
         dt = datetime.now()
 
-    result = build_qimen(dt)
+    result = build_qimen(
+        dt, lon=args.lon, confirm_dst=args.confirm_dst, day_boundary=args.day_boundary,
+    )
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:

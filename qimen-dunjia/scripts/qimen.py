@@ -176,8 +176,59 @@ def find_gong_with_gan(pan: dict, gan: str) -> int:
             return gong
     return None  # 找不到返回 None，由调用方处理
 
-def build_qimen(dt: datetime) -> dict:
+# 天盘干 + 地盘干。只收文献里写死的配对，不收「等」。
+GEJU_PAIRS = {
+    ("戊", "丙"): "青龙返首",
+    ("丙", "戊"): "飞鸟跌穴",
+    ("辛", "乙"): "白虎猖狂",
+    ("丁", "癸"): "朱雀投江",
+    ("癸", "丁"): "螣蛇夭矫",
+    ("乙", "辛"): "青龙逃走",
+    ("庚", "丙"): "太白入荧",
+    ("丙", "庚"): "荧入太白",
+}
+GEJU_NAMES = frozenset(GEJU_PAIRS.values()) | {
+    "天遁", "地遁", "人遁", "三奇得使", "玉女守门", "五不遇时",
+}
+_WX_KE = {"木": "土", "土": "水", "水": "火", "火": "金", "金": "木"}
+
+
+def detect_geju(jiugong: dict, zhishi_men: str, shigan: str, rigan: str) -> list:
+    """格局名只表示盘上成立，不含吉凶断语。"""
+    found = []
+
+    def add(name: str) -> None:
+        if name not in found:
+            found.append(name)
+
+    tg_wx = dict(zip(TIANGAN, WUXING_TG))
+    for n in range(1, 10):
+        g = jiugong[n]
+        tian, di = g.get("天盘", ""), g.get("地盘", "")
+        men, shen = g.get("八门", ""), g.get("八神", "")
+        name = GEJU_PAIRS.get((tian, di))
+        if name:
+            add(name)
+        if tian == "丙" and men == "生" and shen == "九天":
+            add("天遁")
+        if tian == "乙" and men == "开" and shen == "九地":
+            add("地遁")
+        if tian == "丁" and men == "休" and shen == "太阴":
+            add("人遁")
+        if men == zhishi_men and tian in ("乙", "丙", "丁"):
+            add("三奇得使")
+            if tian == "丁":
+                add("玉女守门")
+    if _WX_KE.get(tg_wx.get(shigan, "")) == tg_wx.get(rigan, ""):
+        add("五不遇时")
+    return found
+
+
+def build_qimen(dt: datetime, *, lon: float | None = None, confirm_dst: bool = False, day_boundary: str = "same-day") -> dict:
     """排一局完整的奇门盘"""
+    from clock_adjust import resolve_clock
+
+    dt, clock_meta = resolve_clock(dt, lon=lon, confirm_dst=confirm_dst, day_boundary=day_boundary)
     d = dt.date()
     h = dt.hour
 
@@ -381,6 +432,8 @@ def build_qimen(dt: datetime) -> dict:
         "值符星": zhifu_xing,
         "值使门": zhishi_men,
         "九宫": jiugong,
+        "格局": detect_geju(jiugong, zhishi_men, shigan, rigan),
+        "时间校正": clock_meta,
     }
 
 # ──────────────────────────────────────────────
@@ -396,6 +449,11 @@ def format_output(result: dict) -> str:
     lines.append("╚══════════════════════════════╝")
     lines.append("")
     lines.append(f"时间: {result['时间']}")
+    ck = result.get("时间校正")
+    if ck:
+        lines.append(f"时间校正: 钟面 {ck['输入钟面']} → 入盘 {ck['入盘时间']}  日界 {ck['日界']}  夏令时 {ck['夏令时']}")
+    if result.get("格局") is not None:
+        lines.append("格局: " + ("、".join(result["格局"]) or "无"))
     lines.append(f"日干支: {result['日干支']}  时干支: {result['时干支']}")
     lines.append(f"局: {result['局']}")
     lines.append(f"旬首: {result['旬首']}  值符: {result['值符星']}  值使: {result['值使门']}")
@@ -452,24 +510,18 @@ def main():
                 lg = result["_session_log"]
                 print(f"\n[日志] id={lg['id']}  dir={lg['dir']}")
 
-    if "--json" in sys.argv:
-        json_idx = sys.argv.index("--json")
-        args = sys.argv[json_idx + 1:]
-        if len(args) >= 2:
-            dt = datetime.strptime(f"{args[0]} {args[1]}", "%Y-%m-%d %H:%M")
-        elif len(args) == 1:
-            dt = datetime.strptime(f"{args[0]} 12:00", "%Y-%m-%d %H:%M")
-        else:
-            dt = datetime.now()
-        _emit(build_qimen(dt), as_json=True)
-    elif len(sys.argv) >= 3:
-        dt = datetime.strptime(f"{sys.argv[1]} {sys.argv[2]}", "%Y-%m-%d %H:%M")
-        _emit(build_qimen(dt), as_json=False)
-    elif len(sys.argv) == 2:
-        dt = datetime.strptime(f"{sys.argv[1]} 12:00", "%Y-%m-%d %H:%M")
-        _emit(build_qimen(dt), as_json=False)
+    from clock_adjust import consume_clock_args
+
+    rest, clock = consume_clock_args(sys.argv[1:])
+    as_json = "--json" in rest
+    rest = [a for a in rest if a != "--json"]
+    if len(rest) >= 2:
+        dt = datetime.strptime(f"{rest[0]} {rest[1]}", "%Y-%m-%d %H:%M")
+    elif len(rest) == 1:
+        dt = datetime.strptime(f"{rest[0]} 12:00", "%Y-%m-%d %H:%M")
     else:
-        _emit(build_qimen(datetime.now()), as_json=False)
+        dt = datetime.now()
+    _emit(build_qimen(dt, **clock), as_json=as_json)
 
 if __name__ == "__main__":
     main()

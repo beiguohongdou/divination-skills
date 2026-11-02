@@ -48,6 +48,8 @@ description: "奇门遁甲占断——按节气时辰排九宫八卦阵，布三
 | `py -3 scripts/qimen.py --json YYYY-MM-DD HH:MM` | 全排盘（推荐） |
 | `py -3 scripts/qimen_pan.py ... --json` | 同上，支持 `--datetime` |
 
+时间校正默认不改变盘面。用户给了经度才加 `--lon`；只说城市名时先问经度，不估算。年份在 1986–1991 且用户确认钟面已含夏令时，才加 `--confirm-dst`。用户明确要求 23 点算次日，才加 `--day-boundary next-day`。格局名只认 JSON 的 `格局`，盘上没有的不要报。
+
 ### 联占三式（跨 skill 脚本路径）
 
 本 skill 目录下**无**梅花/六爻/六壬脚本；联占时切换至兄弟 skill：

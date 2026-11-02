@@ -169,38 +169,43 @@ def ke_check(ke_dict, tiandipan):
         return ("上克下", shang)  # 克
     return None
 
+def _special_labels(sike, rigan, rizhi, tiandipan):
+    """伏吟 / 反吟 / 八专 / 四课上神不足四。检测条件与改前相同。"""
+    labels = []
+    if all(tiandipan[dz] == dz for dz in DIZHI):
+        labels.append("伏吟")
+    if all(is_chong(tiandipan[dz], dz) for dz in DIZHI):
+        labels.append("反吟")
+    if GANGONG[rigan] == rizhi:
+        labels.append("八专")
+    shang = [sike[n]["上"] for n in ("一课", "二课", "三课", "四课")]
+    if len(set(shang)) < 4:
+        labels.append("别责")
+    return labels
+
+
+def _unimplemented(labels):
+    return {
+        "初传": None,
+        "中传": None,
+        "末传": None,
+        "宗门": f"{'/'.join(labels)}（未实现，请人工排盘）",
+        "说明": "无克或比用不能定唯一初传；无克专法两份文献不一致，暂不自动排三传",
+    }
+
+
 def get_sanchuan_jiuzongmen(sike, rigan, rizhi, tiandipan):
     """
     九宗门起三传。
+    特殊课若贼克或比用能定唯一初传，按贼克取；否则仍交白卷。
     返回: {"初传": ..., "中传": ..., "末传": ..., "宗门": "..."}
     """
-    # ── 0. 特殊课检测 ──
-    # 伏吟：天盘=地盘
-    is_fuyin = all(tiandipan[dz] == dz for dz in DIZHI)
-    # 反吟：天盘与地盘全冲
-    is_fanyin = all(is_chong(tiandipan[dz], dz) for dz in DIZHI)
-    # 八专：干支同位（如甲寅、丁未、己未、癸丑等）
-    is_bazhuan = GANGONG[rigan] == rizhi
-    # 别责：四课不全（三课）
-    sike_shang = [sike[n]["上"] for n in ["一课", "二课", "三课", "四课"]]
-    is_bieze = len(set(sike_shang)) < 4
-
-    if is_fuyin or is_fanyin or is_bazhuan or is_bieze:
-        special = []
-        if is_fuyin: special.append("伏吟")
-        if is_fanyin: special.append("反吟")
-        if is_bazhuan: special.append("八专")
-        if is_bieze: special.append("别责")
-        return {
-            "初传": None,
-            "中传": None,
-            "末传": None,
-            "宗门": f"{'/'.join(special)}（未实现，请人工排盘）",
-            "说明": "触发特殊课，需按专法起课，本脚本暂不自动排三传",
-        }
+    labels = _special_labels(sike, rigan, rizhi, tiandipan)
 
     ke_names = ["一课", "二课", "三课", "四课"]
     ke_data = []
+    zei = []  # (上神, 下神) 下克上
+    ke = []   # (上神, 下神) 上克下
     for name in ke_names:
         result = ke_check(sike[name], tiandipan)
         ke_data.append({
@@ -208,85 +213,48 @@ def get_sanchuan_jiuzongmen(sike, rigan, rizhi, tiandipan):
             "result": result,
             "shangshen": sike[name]["上"],
         })
-
-    # 收集所有克
-    zei = []  # 下克上
-    ke = []   # 上克下
-    for kd in ke_data:
-        if kd["result"] is None:
+        if result is None:
             continue
-        ktype, dz = kd["result"]
-        if ktype == "下克上":
-            zei.append(dz)
+        pair = (sike[name]["上"], sike[name]["下"])
+        if result[0] == "下克上":
+            zei.append(pair)
         else:
-            ke.append(dz)
+            ke.append(pair)
 
     chuchuan = None
     zongmen = ""
 
-    # ── 0. 特殊课检测 ──
-    # 伏吟：天盘=地盘
-    is_fuyin = all(tiandipan[dz] == dz for dz in DIZHI)
-    # 反吟：天盘与地盘全冲
-    is_fanyin = all(is_chong(tiandipan[dz], dz) for dz in DIZHI)
-    # 八专：干支同位（如甲寅、丁未、己未、癸丑等）
-    is_bazhuan = GANGONG[rigan] == rizhi
-    # 别责：四课不全（三课）
-    sike_shang = [sike[n]["上"] for n in ["一课", "二课", "三课", "四课"]]
-    is_bieze = len(set(sike_shang)) < 4
-
-    if is_fuyin or is_fanyin or is_bazhuan or is_bieze:
-        special = []
-        if is_fuyin: special.append("伏吟")
-        if is_fanyin: special.append("反吟")
-        if is_bazhuan: special.append("八专")
-        if is_bieze: special.append("别责")
-        return {
-            "初传": None,
-            "中传": None,
-            "末传": None,
-            "宗门": f"{'/'.join(special)}（未实现，请人工排盘）",
-            "说明": "触发特殊课，需按专法起课，本脚本暂不自动排三传",
-        }
-
-    # ── 1. 有克 ──
-    all_ke = zei + ke
-    if all_ke:
-        # 先用贼
+    if zei or ke:
         if len(zei) == 1:
-            chuchuan = zei[0]
+            chuchuan = zei[0][0]
             zongmen = "贼克法(下克上)"
         elif len(zei) > 1:
-            # 多个贼 → 比用
             chuchuan = _biyong(zei, rigan)
-            zongmen = f"比用(多贼,取与日干同阴阳)"
+            zongmen = "比用(多贼,取与日干同阴阳)"
         elif len(ke) == 1:
-            chuchuan = ke[0]
+            chuchuan = ke[0][0]
             zongmen = "贼克法(上克下)"
         else:
-            # 多个克 → 比用
             chuchuan = _biyong(ke, rigan)
-            zongmen = f"比用(多克,取与日干同阴阳)"
+            zongmen = "比用(多克,取与日干同阴阳)"
 
         if chuchuan is None:
-            # 比用也选不出 → 涉害
-            candidates = zei if zei else ke
-            chuchuan = _shehai(candidates, sike, tiandipan)
-            zongmen = "涉害法（简化：取首见，未涉深浅）"
+            if labels:
+                return _unimplemented(labels)
+            pairs = zei if zei else ke
+            chuchuan, tie = _shehai(pairs)
+            zongmen = "涉害法（同深取首见）" if tie else "涉害法（顺数回本家，取被克深者）"
     else:
-        # ── 2. 无克 → 遥克 ──
+        if labels:
+            return _unimplemented(labels)
         chuchuan = _yaoke(rigan, rizhi, ke_data)
         if chuchuan:
             zongmen = "遥克法"
         else:
-            # ── 3. 无遥克 → 昴星 ──
             return _maoxing(rigan, sike, tiandipan)
 
-    # 从初传到中传、末传
-    chuchuan_idx = DIZHI.index(chuchuan)
     zhongchuan = tiandipan[chuchuan]  # 中传 = 初传地盘所临天盘之神
     mochuan = tiandipan[zhongchuan]   # 末传 = 中传地盘所临天盘之神
-
     return {
         "初传": chuchuan,
         "中传": zhongchuan,
@@ -294,20 +262,49 @@ def get_sanchuan_jiuzongmen(sike, rigan, rizhi, tiandipan):
         "宗门": zongmen,
     }
 
-def _biyong(candidates, rigan):
-    """比用法：取与日干同阴阳者。阳干取阳支，阴干取阴支。"""
+
+def _biyong(pairs, rigan):
+    """比用法：取与日干同阴阳者。阳干取阳支，阴干取阴支。pairs 为 (上神, 下神)。"""
     is_yang = rigan in YANG_GAN
     yang_dz = set("子寅辰午申戌")
-    yin_dz = set("丑卯巳未酉亥")
-    matched = [dz for dz in candidates if (dz in yang_dz) == is_yang]
+    matched = [p for p in pairs if (p[0] in yang_dz) == is_yang]
     if len(matched) == 1:
-        return matched[0]
+        return matched[0][0]
     return None
 
-def _shehai(candidates, sike, tiandipan):
-    """涉害法：取受克深者（简化版：取先出现者）"""
-    # 完整涉害需要逐位比较克数，此处简化取第一个
-    return candidates[0]
+
+def _shehai_depth(shang: str, xia: str) -> int:
+    """上神从所临下神顺数至本家，途中被克的宫数。含起点，不含本家。
+
+    整圈会让同五行的神深度都一样，所以只数下神到本家这一段。
+    ponytail: 同深取四课先见，不计孟仲季；文献没写见机、察微的操作。
+    """
+    if shang == xia:
+        return 0
+    home = DIZHI.index(shang)
+    i = DIZHI.index(xia)
+    depth = 0
+    for _ in range(12):
+        if i == home:
+            break
+        if WUXING_KE.get(DZ_WX[DIZHI[i]]) == DZ_WX[shang]:
+            depth += 1
+        i = (i + 1) % 12
+    return depth
+
+
+def _shehai(pairs):
+    """取被克最深的上神。同深保留四课中先出现的，并标明 tie。"""
+    best = pairs[0]
+    best_d = _shehai_depth(*best)
+    tie = False
+    for pair in pairs[1:]:
+        depth = _shehai_depth(*pair)
+        if depth > best_d:
+            best, best_d, tie = pair, depth, False
+        elif depth == best_d:
+            tie = True
+    return best[0], tie
 
 def _yaoke(rigan, rizhi, ke_data):
     """遥克法：先取上神遥克日干（蒿矢），无则取日干遥克上神（弹射）"""
@@ -410,8 +407,11 @@ def get_gui_ren_distribution(rigan: str, shichen_idx: int, tiandipan: dict):
 # 综合排盘
 # ──────────────────────────────────────────────
 
-def compute(dt: datetime) -> dict:
+def compute(dt: datetime, *, lon: float | None = None, confirm_dst: bool = False, day_boundary: str = "same-day") -> dict:
     """排一局完整的大六壬盘"""
+    from clock_adjust import resolve_clock
+
+    dt, clock_meta = resolve_clock(dt, lon=lon, confirm_dst=confirm_dst, day_boundary=day_boundary)
     d = dt.date()
     h = dt.hour
 
@@ -450,6 +450,7 @@ def compute(dt: datetime) -> dict:
 
     return {
         "时间": dt.strftime("%Y-%m-%d %H:%M"),
+        "时间校正": clock_meta,
         "日干支": gz_info["日干支"],
         "日干": rigan,
         "日支": rizhi,
@@ -479,6 +480,9 @@ def format_output(result: dict) -> str:
     lines.append("╚══════════════════════════════╝")
     lines.append("")
     lines.append(f"时间: {result['时间']}")
+    ck = result.get("时间校正")
+    if ck:
+        lines.append(f"时间校正: 钟面 {ck['输入钟面']} → 入盘 {ck['入盘时间']}  日界 {ck['日界']}  夏令时 {ck['夏令时']}")
     lines.append(f"日干支: {result['日干支']}  日干: {result['日干']}  日支: {result['日支']}")
     lines.append(f"旬空: {'、'.join(result['旬空'])}")
     lines.append(f"月建: {result['月建']}月  月将: {result['月将']}  占时: {result['占时']}")
@@ -537,24 +541,18 @@ def main():
                 lg = result["_session_log"]
                 print(f"\n[日志] id={lg['id']}  dir={lg['dir']}")
 
-    if "--json" in sys.argv:
-        json_idx = sys.argv.index("--json")
-        args = sys.argv[json_idx + 1:]
-        if len(args) >= 2:
-            dt = datetime.strptime(f"{args[0]} {args[1]}", "%Y-%m-%d %H:%M")
-        elif len(args) == 1:
-            dt = datetime.strptime(f"{args[0]} 12:00", "%Y-%m-%d %H:%M")
-        else:
-            dt = datetime.now()
-        _emit(compute(dt), as_json=True)
-    elif len(sys.argv) >= 3:
-        dt = datetime.strptime(f"{sys.argv[1]} {sys.argv[2]}", "%Y-%m-%d %H:%M")
-        _emit(compute(dt), as_json=False)
-    elif len(sys.argv) == 2:
-        dt = datetime.strptime(f"{sys.argv[1]} 12:00", "%Y-%m-%d %H:%M")
-        _emit(compute(dt), as_json=False)
+    from clock_adjust import consume_clock_args
+
+    rest, clock = consume_clock_args(sys.argv[1:])
+    as_json = "--json" in rest
+    rest = [a for a in rest if a != "--json"]
+    if len(rest) >= 2:
+        dt = datetime.strptime(f"{rest[0]} {rest[1]}", "%Y-%m-%d %H:%M")
+    elif len(rest) == 1:
+        dt = datetime.strptime(f"{rest[0]} 12:00", "%Y-%m-%d %H:%M")
     else:
-        _emit(compute(datetime.now()), as_json=False)
+        dt = datetime.now()
+    _emit(compute(dt, **clock), as_json=as_json)
 
 if __name__ == "__main__":
     main()

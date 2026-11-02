@@ -49,6 +49,8 @@ PDF 原书在仓库上级 `skills/卦书/` 目录（与其它 skill 共用）。
 | `py -3 scripts/daliuren.py --json YYYY-MM-DD HH:MM` | 全排盘（推荐） |
 | `py -3 scripts/daliuren_pan.py ... --json` | 同上，支持 `--datetime` |
 
+时间校正默认不改变盘面。用户给了经度才加 `--lon`；只说城市名时先问经度，不估算。年份在 1986–1991 且用户确认钟面已含夏令时，才加 `--confirm-dst`。用户明确要求 23 点算次日，才加 `--day-boundary next-day`。涉害按上神从下神顺数回本家、计被克次数取深者；同深取四课先见。伏吟、反吟、八专、别责在无克或比用不能定唯一初传时仍标「未实现」。
+
 ### 联占三式（跨 skill 脚本路径）
 
 本 skill 目录下**无**梅花/六爻/奇门脚本；联占时切换至兄弟 skill：

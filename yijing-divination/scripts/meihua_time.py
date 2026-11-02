@@ -269,10 +269,14 @@ def render_lines(binary: str, moving_line: int | None) -> str:
     return "\n".join(rows)
 
 
-def compute(dt: datetime) -> dict:
+def compute(dt: datetime, *, lon: float | None = None, confirm_dst: bool = False, day_boundary: str = "same-day") -> dict:
     if ZhDate is None:
         raise RuntimeError("缺少依赖 zhdate，请运行: pip install zhdate")
 
+    from clock_adjust import resolve_clock
+
+    wall = dt
+    dt, clock_meta = resolve_clock(dt, lon=lon, confirm_dst=confirm_dst, day_boundary=day_boundary)
     lunar = ZhDate.from_datetime(dt)
     ly, lm, ld = lunar.lunar_year, lunar.lunar_month, lunar.lunar_day
     yn, mn, dn = year_number(ly), lm, ld
@@ -297,9 +301,10 @@ def compute(dt: datetime) -> dict:
 
     return {
         "输入": {
-            "公历": dt.strftime("%Y-%m-%d %H:%M:%S"),
+            "公历": wall.strftime("%Y-%m-%d %H:%M:%S"),
             "农历": f"{year_ganzhi(ly)}年{lm}月{lunar_day_label(ld)}{leap_note} {sc_name}时",
         },
+        "时间校正": clock_meta,
         "取数": {
             "年数": {"值": yn, "说明": f"农历{year_ganzhi(ly)}年 → {DIZHI[yn-1]} → {yn}（非公历{dt.year}）"},
             "月数": {"值": mn, "说明": f"农历{lm}月"},
@@ -334,6 +339,9 @@ def main() -> None:
     parser.add_argument("--json", action="store_true", help="JSON 输出")
     parser.add_argument("--question", "-q", default="", help="问事（写入日志 meta）")
     parser.add_argument("--log-id", help="追加到已有日志目录（如 liuyao 链式调用）")
+    parser.add_argument("--lon", type=float, default=None, help="出生地或占测地经度；不传则不校正")
+    parser.add_argument("--confirm-dst", action="store_true", help="确认钟面含 1986–1991 夏令时，才减 60 分钟")
+    parser.add_argument("--day-boundary", default="same-day", choices=("same-day", "next-day"), help="23 点日界，默认算当天")
     args = parser.parse_args()
 
     if args.datetime:
@@ -345,7 +353,7 @@ def main() -> None:
         dt = datetime.now()
 
     try:
-        result = compute(dt)
+        result = compute(dt, lon=args.lon, confirm_dst=args.confirm_dst, day_boundary=args.day_boundary)
     except RuntimeError as e:
         print(str(e), file=sys.stderr)
         sys.exit(1)
